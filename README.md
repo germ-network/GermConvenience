@@ -6,3 +6,10 @@ Shared implementations across packages:
 * tryUnwrap
 * String -> utf8 Data
 * copy bytes from Contiguous bytes (primarily used to get random bytes for use as an identifier or mock data)
+
+### Linting and Practices
+The repo has a .editorconfig and .swift-format setup. We use both swift
+formatter and linter:
+```
+swift format . -ri && swift format lint . -r
+```
