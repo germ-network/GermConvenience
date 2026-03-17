@@ -22,7 +22,7 @@ public struct HTTPDataResponse: Sendable {
 		try expectSuccess(range: successCode...successCode)
 	}
 
-	public func expectSuccess(range: RangeExpression<Int> = 200..<300) throws -> Data {
+	public func expectSuccess(range: any RangeExpression<Int> = 200..<300) throws -> Data {
 		guard range.contains(response.statusCode) else {
 			if let stringResponse = String(data: data, encoding: .utf8) {
 				throw
@@ -53,7 +53,7 @@ public struct HTTPDataResponse: Sendable {
 	}
 
 	public func success<R: Decodable, E: Decodable>(
-		range: RangeExpression<Int> = 200..<300,
+		range: any RangeExpression<Int> = 200..<300,
 		decodeResult resultType: R.Type,
 		orError error: E.Type,
 	) throws -> ErrorResult<R, E> {
