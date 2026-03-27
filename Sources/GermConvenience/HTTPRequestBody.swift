@@ -11,7 +11,7 @@ import HTTPTypes
 //unlike URLRequest, HTTPRequest doesn't carry the request body,
 //for convenience we pass them together
 
-public struct HTTPRequestBody {
+public struct HTTPRequestBody: Sendable {
 	public var request: HTTPRequest
 	public var body: Data?
 
