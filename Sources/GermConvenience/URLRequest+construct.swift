@@ -1,44 +1,35 @@
 //
-//  URLRequest+construct.swift
+//  HTTPRequest+construct.swift
 //  AtprotoClient
 //
 //  Created by Mark @ Germ on 2/27/26.
 //
 
 import Foundation
+import HTTPTypes
+import HTTPTypesFoundation
 
-extension URLRequest {
+extension HTTPRequest {
 	public static func createRequest(
 		url: URL,
-		httpMethod: HTTPMethod,
+		method: Method,
 		httpBody: Data? = nil,
-		acceptValue: String? = "application/json",
-		contentTypeValue: String? = "application/json",
-		authorizationValue: String? = nil,
-	) -> URLRequest {
-		var request = URLRequest(url: url)
-		request.httpMethod = httpMethod.rawValue
+		accept: String? = "application/json",
+		contentType: String? = "application/json",
+		authorization: String? = nil,
+	) -> HTTPRequestBody {
+		var headerFields = HTTPFields()
+		headerFields[.accept] = accept
+		headerFields[.contentType] = contentType
+		headerFields[.authorization] = authorization
 
-		if let acceptValue {
-			request.addValue(acceptValue, forHTTPHeaderField: "Accept")
-		}
-
-		if let authorizationValue {
-			request.addValue(authorizationValue, forHTTPHeaderField: "Authorization")
-		}
-
-		if let httpBody {
-			request.httpBody = httpBody
-		}
-
-		// Send the data if it matches a POST or PUT request.
-		if httpMethod == .post || httpMethod == .put {
-			if let contentTypeValue {
-				request.addValue(
-					contentTypeValue, forHTTPHeaderField: "Content-Type")
-			}
-		}
-
-		return request
+		return .init(
+			request: .init(
+				method: method,
+				url: url,
+				headerFields: headerFields
+			),
+			body: httpBody
+		)
 	}
 }
