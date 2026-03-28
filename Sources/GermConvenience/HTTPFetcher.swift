@@ -17,7 +17,7 @@ import HTTPTypesFoundation
 ///While we intend to primarily depend on Foundation, it is possible to use HTTPTypes independently
 ///of foundation and define your own extensions of your preferred fetch implementation
 public protocol HTTPFetcher: Sendable {
-	func data(for: HTTPRequestBody) async throws -> HTTPDataResponse
+	func data(for: BundledHTTPRequest) async throws -> HTTPDataResponse
 }
 
 ///Authorization fetches should not follow redirects. This includes
@@ -38,7 +38,7 @@ extension URLSession {
 ///The default (shared) urlsession does follow redirects, which is permitted for resource requests
 extension URLSession: HTTPFetcher {
 	public func data(
-		for requestBody: HTTPRequestBody
+		for requestBody: BundledHTTPRequest
 	) async throws -> HTTPDataResponse {
 		if let body = requestBody.body {
 			let (data, httpResponse) = try await upload(

@@ -11,13 +11,13 @@ import HTTPTypes
 //unlike URLRequest, HTTPRequest doesn't carry the request body,
 //for convenience we pass them together
 
-public struct HTTPRequestBody: Sendable {
+public struct BundledHTTPRequest: Sendable {
 	public var request: HTTPRequest
 	public var body: Data?
 
 	public init(request: HTTPRequest, body: Data? = nil) throws {
 		if request.method == .get && body != nil {
-			throw SimpleHTTPRequestError.getMethodWithBody
+			throw HTTPRequestError.getMethodWithBody
 		}
 
 		self.request = request
@@ -25,11 +25,11 @@ public struct HTTPRequestBody: Sendable {
 	}
 }
 
-public enum SimpleHTTPRequestError: Error {
+public enum HTTPRequestError: Error {
 	case getMethodWithBody
 }
 
-extension SimpleHTTPRequestError: LocalizedError {
+extension HTTPRequestError: LocalizedError {
 	public var errorDescription: String? {
 		switch self {
 		case .getMethodWithBody:
