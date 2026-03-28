@@ -19,4 +19,27 @@ public struct HTTPRequestBody: Sendable {
 		self.request = request
 		self.body = body
 	}
+
+	public init(
+		url: URL,
+		method: HTTPRequest.Method,
+		httpBody: Data? = nil,
+		accept: String? = "application/json",
+		contentType: String? = "application/json",
+		authorization: String? = nil,
+	) {
+		var headerFields = HTTPFields()
+		headerFields[.accept] = accept
+		headerFields[.contentType] = contentType
+		headerFields[.authorization] = authorization
+
+		self.init(
+			request: .init(
+				method: method,
+				url: url,
+				headerFields: headerFields
+			),
+			body: httpBody
+		)
+	}
 }
