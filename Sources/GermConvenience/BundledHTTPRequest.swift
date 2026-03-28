@@ -20,8 +20,8 @@ public struct BundledHTTPRequest: Sendable {
 		self.body = nil
 	}
 
-	public init(request: HTTPRequest, body: Data) throws {
-		if request.method == .get {
+	public init(request: HTTPRequest, body: Data?) throws {
+		if request.method == .get, body != nil {
 			throw HTTPRequestError.getMethodWithBody
 		}
 
