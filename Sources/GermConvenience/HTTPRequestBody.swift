@@ -29,7 +29,7 @@ public struct HTTPRequestBody: Sendable {
 		accept: String? = "application/json",
 		contentType: String? = "application/x-form-urlencoded",
 		authorization: String? = nil,
-	) {
+	) throws {
 		var headerFields = HTTPFields()
 		for header in customHeaders {
 			headerFields[header.name] = header.value
@@ -37,6 +37,10 @@ public struct HTTPRequestBody: Sendable {
 		headerFields[.accept] = accept
 		headerFields[.contentType] = contentType
 		headerFields[.authorization] = authorization
+
+		if method == .get && httpBody != nil {
+			throw SimpleHTTPRequestError.getMethodWithBody
+		}
 
 		self.init(
 			request: .init(
@@ -46,5 +50,18 @@ public struct HTTPRequestBody: Sendable {
 			),
 			body: httpBody
 		)
+	}
+}
+
+public enum SimpleHTTPRequestError: Error {
+	case getMethodWithBody
+}
+
+extension SimpleHTTPRequestError: LocalizedError {
+	public var errorDescription: String? {
+		switch self {
+		case .getMethodWithBody:
+			return "Cannot use .get method with a body"
+		}
 	}
 }
