@@ -24,11 +24,16 @@ public struct HTTPRequestBody: Sendable {
 		url: URL,
 		method: HTTPRequest.Method,
 		httpBody: Data? = nil,
+		customHeaders: [HTTPField] = [],
+		//the following override the client's custom headers if there is a conflict
 		accept: String? = "application/json",
 		contentType: String? = "application/json",
 		authorization: String? = nil,
 	) {
 		var headerFields = HTTPFields()
+		for header in customHeaders {
+			headerFields[header.name] = header.value
+		}
 		headerFields[.accept] = accept
 		headerFields[.contentType] = contentType
 		headerFields[.authorization] = authorization
