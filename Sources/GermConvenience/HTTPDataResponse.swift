@@ -64,12 +64,11 @@ public struct HTTPDataResponse: Sendable {
 	}
 
 	public func success<R: Decodable, E: Decodable>(
-		kind: HTTPResponse.Status.Kind,
 		decodeResult resultType: R.Type,
 		orError error: E.Type,
 	) throws -> ErrorResult<R, E> {
 		do {
-			try expect(status: kind)
+			try expect(status: .successful)
 
 			return .result(try data.decode())
 		} catch {
