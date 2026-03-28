@@ -12,11 +12,16 @@ import HTTPTypes
 //for convenience we pass them together
 
 public struct BundledHTTPRequest: Sendable {
-	public var request: HTTPRequest
-	public var body: Data?
+	public let request: HTTPRequest
+	public let body: Data?
+	
+	public init(request: HTTPRequest) {
+		self.request = request
+		self.body = nil
+	}
 
-	public init(request: HTTPRequest, body: Data? = nil) throws {
-		if request.method == .get && body != nil {
+	public init(request: HTTPRequest, body: Data) throws {
+		if request.method == .get {
 			throw HTTPRequestError.getMethodWithBody
 		}
 
