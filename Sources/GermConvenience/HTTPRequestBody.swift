@@ -27,7 +27,7 @@ public struct HTTPRequestBody: Sendable {
 		customHeaders: [HTTPField] = [],
 		//the following override the client's custom headers if there is a conflict
 		accept: String? = "application/json",
-		contentType: String? = "application/json",
+		contentType: String? = "application/x-form-urlencoded",
 		authorization: String? = nil,
 	) {
 		var headerFields = HTTPFields()
