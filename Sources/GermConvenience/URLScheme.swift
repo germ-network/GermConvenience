@@ -1,5 +1,5 @@
 //
-//  HTTPScheme.swift
+//  URLScheme.swift
 //  GermConvenience
 //
 //  Created by Mark @ Germ on 2/26/26.
