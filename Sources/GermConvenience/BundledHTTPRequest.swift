@@ -12,9 +12,9 @@ import HTTPTypes
 //for convenience we pass them together
 
 public struct BundledHTTPRequest: Sendable {
-	public let request: HTTPRequest
-	public let body: Data?
-	
+	public var request: HTTPRequest
+	public var body: Data?
+
 	public init(request: HTTPRequest) {
 		self.request = request
 		self.body = nil

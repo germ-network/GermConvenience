@@ -38,16 +38,19 @@ extension URLSession {
 ///The default (shared) urlsession does follow redirects, which is permitted for resource requests
 extension URLSession: HTTPFetcher {
 	public func data(
-		for requestBody: BundledHTTPRequest
+		for request: BundledHTTPRequest
 	) async throws -> HTTPDataResponse {
-		if let body = requestBody.body {
+		if let body = request.body {
+			guard request.request.method != .get else {
+				throw HTTPRequestError.getMethodWithBody
+			}
 			let (data, httpResponse) = try await upload(
-				for: requestBody.request,
+				for: request.request,
 				from: body
 			)
 			return .init(data: data, response: httpResponse)
 		} else {
-			let (data, httpResponse) = try await data(for: requestBody.request)
+			let (data, httpResponse) = try await data(for: request.request)
 			return .init(data: data, response: httpResponse)
 		}
 	}
