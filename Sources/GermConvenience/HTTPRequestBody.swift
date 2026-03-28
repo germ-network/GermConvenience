@@ -15,41 +15,13 @@ public struct HTTPRequestBody: Sendable {
 	public var request: HTTPRequest
 	public var body: Data?
 
-	public init(request: HTTPRequest, body: Data? = nil) {
-		self.request = request
-		self.body = body
-	}
-
-	public init(
-		url: URL,
-		method: HTTPRequest.Method,
-		httpBody: Data? = nil,
-		customHeaders: [HTTPField] = [],
-		//the following override the client's custom headers if there is a conflict
-		accept: String? = "application/json",
-		contentType: String? = "application/x-form-urlencoded",
-		authorization: String? = nil,
-	) throws {
-		var headerFields = HTTPFields()
-		for header in customHeaders {
-			headerFields[header.name] = header.value
-		}
-		headerFields[.accept] = accept
-		headerFields[.contentType] = contentType
-		headerFields[.authorization] = authorization
-
-		if method == .get && httpBody != nil {
+	public init(request: HTTPRequest, body: Data? = nil) throws {
+		if request.method == .get && body != nil {
 			throw SimpleHTTPRequestError.getMethodWithBody
 		}
 
-		self.init(
-			request: .init(
-				method: method,
-				url: url,
-				headerFields: headerFields
-			),
-			body: httpBody
-		)
+		self.request = request
+		self.body = body
 	}
 }
 
