@@ -6,38 +6,46 @@
 //
 
 import Foundation
+import HTTPTypes
 
-//type the (data, response) tuple so we can chain handlers
-//these patterns are available in Vapor
+//type the (data, response) tuple so we can chain handling
 public struct HTTPDataResponse: Sendable {
 	public let data: Data
-	public let response: HTTPURLResponse
+	public let response: HTTPResponse
 
-	public init(data: Data, response: HTTPURLResponse) {
+	public init(data: Data, response: HTTPResponse) {
 		self.data = data
 		self.response = response
 	}
 
-	public func expect(successCode: Int) throws -> Data {
-		try expectSuccess(range: successCode...successCode)
-	}
-
-	public func expectSuccess(range: any RangeExpression<Int> = 200..<300) throws -> Data {
-		guard range.contains(response.statusCode) else {
-			if let stringResponse = String(data: data, encoding: .utf8) {
-				throw
-					HTTPResponseError
-					.unsuccessfulString(response.statusCode, stringResponse)
-			} else {
-				throw HTTPResponseError.unsuccessful(response.statusCode, data)
-			}
+	public func expect(statusCode: Int) throws -> Data {
+		guard response.status.code == statusCode else {
+			throw HTTPResponseError.unsuccessful(response.status.code, data)
 		}
 		return data
 	}
 
+	public func expectSuccess() throws -> Data {
+		try expect(status: .successful)
+
+		return data
+	}
+
+	func expect(status: HTTPResponse.Status.Kind) throws {
+		guard response.status.kind == status else {
+			if let stringResponse = String(data: data, encoding: .utf8) {
+				throw
+					HTTPResponseError
+					.unsuccessfulString(response.status.code, stringResponse)
+			} else {
+				throw HTTPResponseError.unsuccessful(response.status.code, data)
+			}
+		}
+	}
+
 	public enum ErrorResult<R: Decodable, E: Decodable> {
 		case result(R)
-		case error(E, Int)
+		case error(E, HTTPResponse.Status)
 	}
 
 	public func success<R: Decodable, E: Decodable>(
@@ -45,25 +53,26 @@ public struct HTTPDataResponse: Sendable {
 		decodeResult resultType: R.Type,
 		orError error: E.Type,
 	) throws -> ErrorResult<R, E> {
-		try success(
-			range: code...code,
-			decodeResult: R.self,
-			orError: E.self
-		)
+		do {
+			let result: R = try expect(statusCode: code)
+				.decode()
+
+			return .result(result)
+		} catch {
+			return .error(try data.decode(), response.status)
+		}
 	}
 
 	public func success<R: Decodable, E: Decodable>(
-		range: any RangeExpression<Int> = 200..<300,
 		decodeResult resultType: R.Type,
 		orError error: E.Type,
 	) throws -> ErrorResult<R, E> {
 		do {
-			return .result(
-				try expectSuccess(range: range)
-					.decode()
-			)
+			try expect(status: .successful)
+
+			return .result(try data.decode())
 		} catch {
-			return .error(try data.decode(), response.statusCode)
+			return .error(try data.decode(), response.status)
 		}
 
 	}

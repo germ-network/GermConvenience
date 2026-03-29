@@ -6,18 +6,18 @@
 //
 
 import Foundation
+import HTTPTypesFoundation
 
 #if canImport(FoundationNetworking)
 	import FoundationNetworking
 #endif
 
-///We are not genericizing over the network stack as our HTTP request construction relies heavily on
-///URLRequest which is tied closely to URLSession.
-///This genericization serves to allow mock ingestion for testing
-///This is a (sendable) object abstraction, not a closure, so that we can reason about the cache sharing
-///which is localiized to an instance of a URLSession
+///This protocol wraps the HTTP types of https://github.com/apple/swift-http-types
+///to provide a mockable fetch interface
+///While we intend to primarily depend on Foundation, it is possible to use HTTPTypes independently
+///of foundation and define your own extensions of your preferred fetch implementation
 public protocol HTTPFetcher: Sendable {
-	func data(for: URLRequest) async throws -> HTTPDataResponse
+	func data(for: BundledHTTPRequest) async throws -> HTTPDataResponse
 }
 
 ///Authorization fetches should not follow redirects. This includes
@@ -37,18 +37,23 @@ extension URLSession {
 
 ///The default (shared) urlsession does follow redirects, which is permitted for resource requests
 extension URLSession: HTTPFetcher {
-	public func data(for request: URLRequest) async throws -> HTTPDataResponse {
-		let (data, urlResponse) = try await self.data(for: request)
-		if let httpResponse = urlResponse as? HTTPURLResponse {
+	public func data(
+		for request: BundledHTTPRequest
+	) async throws -> HTTPDataResponse {
+		if let body = request.body {
+			guard request.request.method != .get else {
+				throw HTTPRequestError.getMethodWithBody
+			}
+			let (data, httpResponse) = try await upload(
+				for: request.request,
+				from: body
+			)
 			return .init(data: data, response: httpResponse)
 		} else {
-			throw URLSessionError.nonHttpResponse
+			let (data, httpResponse) = try await data(for: request.request)
+			return .init(data: data, response: httpResponse)
 		}
 	}
-}
-
-enum URLSessionError: Error {
-	case nonHttpResponse
 }
 
 final class ManualRedirect: NSObject, URLSessionTaskDelegate {
