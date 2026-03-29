@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct HTTPContentType: Sendable {
+public struct HTTPContentType: Equatable, Sendable {
 	public static let json = HTTPContentType(rawValue: "application/json")
 	public static let formData = HTTPContentType(
 		rawValue: "application/x-www-form-urlencoded;charset=UTF-8")
