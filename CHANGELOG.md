@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.1.1
+
+### Patch Changes
+
+- [#4](https://github.com/germ-network/GermConvenience/pull/4) [`50e0ccf`](https://github.com/germ-network/GermConvenience/commit/50e0ccf42f7fd9315b76acdb6882770f797f3f85) Thanks [@germ-mark](https://github.com/germ-mark)! - add content types for any and none
+
 ## 0.1.0
 
 ### Minor Changes
