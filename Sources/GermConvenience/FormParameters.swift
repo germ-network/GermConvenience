@@ -26,6 +26,14 @@ public struct FormParameters: Codable, Sendable {
 		}
 	}
 
+	public func getAll(name: String) -> [String]? {
+		return self.storage[name]
+	}
+
+	public func get(name: String) -> String? {
+		return self.storage[name]?.first
+	}
+
 	public mutating func set(name: String, value: String) {
 		var params = self.storage[name, default: []]
 		params.append(value)
@@ -33,8 +41,8 @@ public struct FormParameters: Codable, Sendable {
 		self.storage[name] = params
 	}
 
-	public func get(name: String) -> [String]? {
-		return self.storage[name]
+	public mutating func delete(name: String) {
+		self.storage.removeValue(forKey: name)
 	}
 
 	public func asQueryItems() -> [URLQueryItem] {
