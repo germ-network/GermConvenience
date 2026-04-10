@@ -21,8 +21,8 @@ let testVectors = [
 				],
 				[URLQueryItem(name: "föo", value: "bār")],
 				[
-					URLQueryItem(name: "föo", value: "bar"),
 					URLQueryItem(name: "foo", value: "bar"),
+					URLQueryItem(name: "föo", value: "bar"),
 				],
 			])) func testQueryItems(
 			params: [String: [String]], expected: [URLQueryItem]
@@ -39,7 +39,7 @@ let testVectors = [
 			[
 				"foo=bar&foo=quux",
 				"f%C3%B6o=b%C4%81r",
-				"f%C3%B6o=bar&foo=bar",
+				"foo=bar&f%C3%B6o=bar",
 			]))
 	func testEncoding(params: [String: [String]], expected: String) throws {
 		let encoded = try FormParameters(parameters: params).encode()
