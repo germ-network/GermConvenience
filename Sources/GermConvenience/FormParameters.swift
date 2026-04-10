@@ -16,6 +16,10 @@ public struct FormParameters: Codable, Sendable {
 		self.storage = [:]
 	}
 
+	public init(parameters: [String: [String]]) {
+		self.storage = parameters
+	}
+
 	public init(parameters: [String: String]) {
 		self.storage = parameters.reduce(
 			into: Storage(),
@@ -25,15 +29,12 @@ public struct FormParameters: Codable, Sendable {
 			})
 	}
 
-	public mutating func set(name: String, value: String?) {
-		if let value = value {
-			if var param = self.storage[name] {
-				param.append(value)
-			} else {
-				self.storage[name] = [value]
-			}
+	public mutating func set(name: String, value: String) {
+		if var params = self.storage[name] {
+			params.append(value)
+			self.storage[name] = params
 		} else {
-			self.storage.removeValue(forKey: name)
+			self.storage[name] = [value]
 		}
 	}
 
