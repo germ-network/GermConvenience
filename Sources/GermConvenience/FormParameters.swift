@@ -7,8 +7,7 @@
 import Foundation
 
 public struct FormParameters: Codable, Sendable {
-	typealias Storage = [String: [String]]
-	private var storage: Storage
+	private var storage: [String: [String]]
 
 	public static var contentType: HTTPContentType { .formUrlEncoded }
 
@@ -21,21 +20,17 @@ public struct FormParameters: Codable, Sendable {
 	}
 
 	public init(parameters: [String: String]) {
-		self.storage = parameters.reduce(
-			into: Storage(),
-			{
-				storage, parameter in
-				storage[parameter.key] = [parameter.value]
-			})
+		self.storage = parameters.reduce(into: [:]) {
+			storage, parameter in
+			storage[parameter.key, default: []].append(parameter.value)
+		}
 	}
 
 	public mutating func set(name: String, value: String) {
-		if var params = self.storage[name] {
-			params.append(value)
-			self.storage[name] = params
-		} else {
-			self.storage[name] = [value]
-		}
+		var params = self.storage[name, default: []]
+		params.append(value)
+
+		self.storage[name] = params
 	}
 
 	public func get(name: String) -> [String]? {
@@ -53,7 +48,7 @@ public struct FormParameters: Codable, Sendable {
 	public func encode() throws -> Data {
 		return self.storage.flatMap { parameter -> [String] in
 			guard
-				let key = parameter.key.addingPercentEncoding(
+				let encodedKey = parameter.key.addingPercentEncoding(
 					withAllowedCharacters: .urlQueryAllowed)
 			else {
 				return []
@@ -67,7 +62,7 @@ public struct FormParameters: Codable, Sendable {
 					return nil
 				}
 
-				return [key, encodedValue].joined(separator: "=")
+				return [encodedKey, encodedValue].joined(separator: "=")
 			}
 		}.joined(separator: "&").utf8Data
 	}
