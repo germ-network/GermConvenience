@@ -13,8 +13,8 @@ import HTTPTypes
 
 public struct BundledHTTPRequest: Sendable {
 	public var request: HTTPRequest
-	private var parameters: FormParameters?
-	private var data: Data?
+	public var parameters: FormParameters?
+	public var data: Data?
 
 	public init(request: HTTPRequest) {
 		self.request = request
