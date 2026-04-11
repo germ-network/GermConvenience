@@ -40,6 +40,10 @@ public struct FormParameters: Sendable {
 		}
 	}
 
+	public var isEmpty: Bool {
+		storage.isEmpty
+	}
+
 	public func getAll(name: String) -> [String]? {
 		return self.storage[name]
 	}
@@ -73,26 +77,24 @@ public struct FormParameters: Sendable {
 	}
 
 	public var data: Data {
-		get throws {
-			storage.flatMap { parameter -> [String] in
+		storage.flatMap { parameter -> [String] in
+			guard
+				let encodedKey = parameter.key.addingPercentEncoding(
+					withAllowedCharacters: .urlQueryAllowed)
+			else {
+				return []
+			}
+
+			return parameter.value.compactMap { value -> String? in
 				guard
-					let encodedKey = parameter.key.addingPercentEncoding(
+					let encodedValue = value.addingPercentEncoding(
 						withAllowedCharacters: .urlQueryAllowed)
 				else {
-					return []
+					return nil
 				}
 
-				return parameter.value.compactMap { value -> String? in
-					guard
-						let encodedValue = value.addingPercentEncoding(
-							withAllowedCharacters: .urlQueryAllowed)
-					else {
-						return nil
-					}
-
-					return [encodedKey, encodedValue].joined(separator: "=")
-				}
-			}.joined(separator: "&").utf8Data
-		}
+				return [encodedKey, encodedValue].joined(separator: "=")
+			}
+		}.joined(separator: "&").utf8Data
 	}
 }

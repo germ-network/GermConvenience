@@ -13,20 +13,46 @@ import HTTPTypes
 
 public struct BundledHTTPRequest: Sendable {
 	public var request: HTTPRequest
-	public var body: Data?
+	private var parameters: FormParameters?
+	private var data: Data?
 
 	public init(request: HTTPRequest) {
 		self.request = request
-		self.body = nil
+		self.data = nil
 	}
 
-	public init(request: HTTPRequest, body: Data?) throws {
-		if request.method == .get, body != nil {
+	public init(request: HTTPRequest, data: Data?) throws {
+		if request.method == .get, data != nil {
 			throw HTTPRequestError.getMethodWithBody
 		}
 
 		self.request = request
-		self.body = body
+		self.data = data
+	}
+
+	public init(request: HTTPRequest, body: Data?) throws {
+		try self.init(request: request, data: body)
+	}
+
+	public init(request: HTTPRequest, parameters: FormParameters) throws {
+		if request.method == .get {
+			throw HTTPRequestError.getMethodWithBody
+		}
+
+		self.request = request
+		self.parameters = parameters
+	}
+
+	public var body: Data? {
+		get throws {
+			if let data = data {
+				return data
+			}
+			if let parameters = parameters {
+				return parameters.data
+			}
+			return nil
+		}
 	}
 }
 
