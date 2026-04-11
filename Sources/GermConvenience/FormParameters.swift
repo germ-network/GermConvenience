@@ -26,6 +26,20 @@ public struct FormParameters: Sendable {
 		}
 	}
 
+	public subscript(name: String) -> String? {
+		get {
+			storage[name]?.first
+		}
+
+		set(newValue) {
+			if let value = newValue {
+				storage[name, default: []].append(value)
+			} else {
+				storage.removeValue(forKey: name)
+			}
+		}
+	}
+
 	public func getAll(name: String) -> [String]? {
 		return self.storage[name]
 	}
