@@ -6,7 +6,7 @@
 //
 import Foundation
 
-public struct FormParameters: Codable, Sendable {
+public struct FormParameters: Sendable {
 	private var storage: [String: [String]]
 
 	public static var contentType: HTTPContentType { .formUrlEncoded }
