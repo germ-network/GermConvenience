@@ -10,6 +10,24 @@ let testVectors = [
 ]
 
 @Suite("FormParameters") struct TestFormParameters {
+	@Test("Set multiple with the same key") func testSetMultiple() throws {
+		var params = FormParameters()
+		params.set(name: "foo", value: "bar")
+		params.set(name: "foo", value: "quux")
+
+		#expect(params.entries() == [["foo", "bar"], ["foo", "quux"]])
+	}
+
+	@Test("Get first value") func testGetFirstValue() throws {
+		let params = FormParameters(["foo": ["bar", "baz"]])
+
+		let value = params.get(name: "foo")
+		#expect(value != nil)
+		#expect(value == "bar")
+
+		#expect(params.get(name: "unknown") == nil)
+	}
+
 	@Test(
 		"Encoding to query string",
 		arguments: zip(
@@ -21,14 +39,14 @@ let testVectors = [
 				],
 				[URLQueryItem(name: "föo", value: "bār")],
 				[
-					URLQueryItem(name: "foo", value: "bar"),
 					URLQueryItem(name: "föo", value: "bar"),
+					URLQueryItem(name: "foo", value: "bar")
 				],
 			])) func testQueryItems(
 			params: [String: [String]], expected: [URLQueryItem]
 		)
 	{
-		let params = FormParameters(parameters: params)
+		let params = FormParameters(params)
 		#expect(params.asQueryItems() == expected)
 	}
 
@@ -39,10 +57,10 @@ let testVectors = [
 			[
 				"foo=bar&foo=quux",
 				"f%C3%B6o=b%C4%81r",
-				"foo=bar&f%C3%B6o=bar",
+				"f%C3%B6o=bar&foo=bar",
 			]))
 	func testEncoding(params: [String: [String]], expected: String) throws {
-		let encoded = try FormParameters(parameters: params).encode()
+		let encoded = try FormParameters(params).data
 		let str = String(bytes: encoded, encoding: .utf8)
 
 		debugPrint(str!, expected)

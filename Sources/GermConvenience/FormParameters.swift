@@ -15,11 +15,11 @@ public struct FormParameters: Codable, Sendable {
 		self.storage = [:]
 	}
 
-	public init(parameters: [String: [String]]) {
+	public init(_ parameters: [String: [String]]) {
 		self.storage = parameters
 	}
 
-	public init(parameters: [String: String]) {
+	public init(_ parameters: [String: String]) {
 		self.storage = parameters.reduce(into: [:]) {
 			storage, parameter in
 			storage[parameter.key, default: []].append(parameter.value)
@@ -31,47 +31,54 @@ public struct FormParameters: Codable, Sendable {
 	}
 
 	public func get(name: String) -> String? {
-		return self.storage[name]?.first
+		return storage[name]?.first
 	}
 
 	public mutating func set(name: String, value: String) {
-		var params = self.storage[name, default: []]
-		params.append(value)
-
-		self.storage[name] = params
+		storage[name, default: []].append(value)
 	}
 
 	public mutating func delete(name: String) {
-		self.storage.removeValue(forKey: name)
+		storage.removeValue(forKey: name)
+	}
+
+	public func entries() -> [[String]] {
+		storage.flatMap({ parameter -> [[String]] in
+			parameter.value.map { value -> [String] in
+				[parameter.key, value]
+			}
+		})
 	}
 
 	public func asQueryItems() -> [URLQueryItem] {
-		self.storage.flatMap({ parameter -> [URLQueryItem] in
+		storage.flatMap({ parameter -> [URLQueryItem] in
 			parameter.value.map({ value -> URLQueryItem in
 				.init(name: parameter.key, value: value)
 			})
 		})
 	}
 
-	public func encode() throws -> Data {
-		return self.storage.flatMap { parameter -> [String] in
-			guard
-				let encodedKey = parameter.key.addingPercentEncoding(
-					withAllowedCharacters: .urlQueryAllowed)
-			else {
-				return []
-			}
-
-			return parameter.value.compactMap { value -> String? in
+	public var data: Data {
+		get throws {
+			storage.flatMap { parameter -> [String] in
 				guard
-					let encodedValue = value.addingPercentEncoding(
+					let encodedKey = parameter.key.addingPercentEncoding(
 						withAllowedCharacters: .urlQueryAllowed)
 				else {
-					return nil
+					return []
 				}
 
-				return [encodedKey, encodedValue].joined(separator: "=")
-			}
-		}.joined(separator: "&").utf8Data
+				return parameter.value.compactMap { value -> String? in
+					guard
+						let encodedValue = value.addingPercentEncoding(
+							withAllowedCharacters: .urlQueryAllowed)
+					else {
+						return nil
+					}
+
+					return [encodedKey, encodedValue].joined(separator: "=")
+				}
+			}.joined(separator: "&").utf8Data
+		}
 	}
 }
