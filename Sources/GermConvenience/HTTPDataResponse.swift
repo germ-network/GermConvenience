@@ -94,4 +94,5 @@ extension Data {
 public enum HTTPResponseError: Error {
 	case unsuccessful(Int, Data)
 	case unsuccessfulString(Int, String)
+	case notImplemented
 }

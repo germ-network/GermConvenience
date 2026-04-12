@@ -13,46 +13,48 @@ import HTTPTypes
 
 public struct BundledHTTPRequest: Sendable {
 	public var request: HTTPRequest
-	public var parameters: FormParameters?
-	public var data: Data?
+	public var body: Body?
 
-	public init(request: HTTPRequest) {
-		self.request = request
-		self.data = nil
+	public enum Body: Sendable {
+		public enum Attached: Sendable {
+			case parameters(FormParameters)
+			case data(Data)
+
+			var data: Data {
+				switch self {
+				case .parameters(let formParameters):
+					formParameters.data
+				case .data(let data):
+					data
+				}
+			}
+		}
+		case attached(Attached)
+		//placeholder for
+		//https://developer.apple.com/documentation/foundation/uploading-streams-of-data?language=objc
+		case stream(Stream)
+
+		//needs to be able to conform to StreamDelegate
+		public struct Stream: Sendable {
+		}
 	}
 
-	public init(request: HTTPRequest, data: Data?) throws {
-		if request.method == .get, data != nil {
+	public init(request: HTTPRequest, body: Body?) throws {
+		self.request = request
+		if request.method == .get, body != nil {
 			throw HTTPRequestError.getMethodWithBody
 		}
 
-		self.request = request
-		self.data = data
+		self.body = body
 	}
 
-	public init(request: HTTPRequest, body: Data?) throws {
-		try self.init(request: request, data: body)
+	//convenience
+	public init(request: HTTPRequest, data: Data) throws {
+		try self.init(request: request, body: .attached(.data(data)))
 	}
 
 	public init(request: HTTPRequest, parameters: FormParameters) throws {
-		if request.method == .get {
-			throw HTTPRequestError.getMethodWithBody
-		}
-
-		self.request = request
-		self.parameters = parameters
-	}
-
-	public var body: Data? {
-		get throws {
-			if let data = data {
-				return data
-			}
-			if let parameters = parameters {
-				return parameters.data
-			}
-			return nil
-		}
+		try self.init(request: request, body: .attached(.parameters(parameters)))
 	}
 }
 

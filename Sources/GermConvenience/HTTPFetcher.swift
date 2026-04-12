@@ -40,16 +40,19 @@ extension URLSession: HTTPFetcher {
 	public func data(
 		for request: BundledHTTPRequest
 	) async throws -> HTTPDataResponse {
-		if let body = request.body {
+		switch request.body {
+		case .attached(let attached):
 			guard request.request.method != .get else {
 				throw HTTPRequestError.getMethodWithBody
 			}
 			let (data, httpResponse) = try await upload(
 				for: request.request,
-				from: body
+				from: attached.data
 			)
 			return .init(data: data, response: httpResponse)
-		} else {
+		case .stream(_):
+			throw HTTPResponseError.notImplemented
+		case nil:
 			let (data, httpResponse) = try await data(for: request.request)
 			return .init(data: data, response: httpResponse)
 		}
