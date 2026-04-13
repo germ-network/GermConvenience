@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum UnwrapError: Error {
+enum UnwrapError: Error, Equatable {
 	case missing(String)
 }
 
