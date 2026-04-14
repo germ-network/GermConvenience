@@ -90,6 +90,4 @@ public struct FormParameters: Sendable {
 		return result.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
 			?? result
 	}
-		}
-	}
 }
