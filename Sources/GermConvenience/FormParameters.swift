@@ -73,26 +73,23 @@ public struct FormParameters: Sendable {
 	}
 
 	public var data: Data {
-		get throws {
-			storage.flatMap { parameter -> [String] in
-				guard
-					let encodedKey = parameter.key.addingPercentEncoding(
-						withAllowedCharacters: .urlQueryAllowed)
-				else {
-					return []
-				}
+		storage.flatMap { parameter -> [String] in
+			let encodedKey = encodeString(input: parameter.key)
 
-				return parameter.value.compactMap { value -> String? in
-					guard
-						let encodedValue = value.addingPercentEncoding(
-							withAllowedCharacters: .urlQueryAllowed)
-					else {
-						return nil
-					}
+			return parameter.value.compactMap { value -> String? in
+				let encodedValue = encodeString(input: value)
 
-					return [encodedKey, encodedValue].joined(separator: "=")
-				}
-			}.joined(separator: "&").utf8Data
+				return [encodedKey, encodedValue].joined(separator: "=")
+			}
+		}.joined(separator: "&").utf8Data
+	}
+
+	private func encodeString(input: String) -> String {
+		let result = input.replacingOccurrences(of: " ", with: "+")
+
+		return result.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
+			?? result
+	}
 		}
 	}
 }
