@@ -78,6 +78,18 @@ public struct HTTPDataResponse: Sendable {
 	}
 }
 
+extension HTTPDataResponse: CustomStringConvertible {
+	public var description: String {
+		let bodyDisplay: String
+		if let body = String(data: data, encoding: .utf8) {
+			bodyDisplay = body.isEmpty ? "<empty>" : #""\#(body)""#
+		} else {
+			bodyDisplay = "<\(data.count) bytes>"
+		}
+		return "\(_typeName(Self.self, qualified: true))(status: \(response.status.code), data: \(bodyDisplay))"
+	}
+}
+
 extension Data {
 	//If the return type is Data we don't try to decode it
 	public func decode<R: Decodable>() throws -> R {
