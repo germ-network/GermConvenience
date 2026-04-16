@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.1.2
+
+### Patch Changes
+
+- [#8](https://github.com/germ-network/GermConvenience/pull/8) [`bf741d4`](https://github.com/germ-network/GermConvenience/commit/bf741d4f57d28b90fb76b6ccecd0b112e02a9f91) Thanks [@nnabeyang](https://github.com/nnabeyang)! - Improve HTTPDataResponse debug visibility for better error diagnosis
+
 ## 0.1.1
 
 ### Patch Changes
