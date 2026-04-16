@@ -48,7 +48,11 @@ public struct FormParameters: Sendable {
 		return storage[name]?.first
 	}
 
-	public mutating func set(name: String, value: String) {
+	public mutating func set(name: String, value: [String]) {
+		storage[name] = value
+	}
+
+	public mutating func add(name: String, value: String) {
 		storage[name, default: []].append(value)
 	}
 
@@ -87,7 +91,7 @@ public struct FormParameters: Sendable {
 	private func encodeString(input: String) -> String {
 		//for compatibility, not behaving strictly following
 		//https://datatracker.ietf.org/doc/html/rfc1866 which specifies this
-//		let result = input.replacingOccurrences(of: " ", with: "+")
+		//		let result = input.replacingOccurrences(of: " ", with: "+")
 
 		return input.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
 			?? input

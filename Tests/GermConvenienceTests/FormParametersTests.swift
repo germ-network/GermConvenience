@@ -13,8 +13,8 @@ let testVectors = [
 @Suite("FormParameters") struct TestFormParameters {
 	@Test("Set multiple with the same key") func testSetMultiple() throws {
 		var params = FormParameters()
-		params.set(name: "foo", value: "bar")
-		params.set(name: "foo", value: "quux")
+		params.add(name: "foo", value: "bar")
+		params.add(name: "foo", value: "quux")
 
 		#expect(params.entries() == [["foo", "bar"], ["foo", "quux"]])
 	}
