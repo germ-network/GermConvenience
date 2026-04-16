@@ -63,7 +63,7 @@ let testVectors = [
 				"",
 			]))
 	func testEncoding(params: [String: [String]], expected: String) throws {
-		let encoded = try FormParameters(params).data
+		let encoded = FormParameters(params).data
 		let str = String(bytes: encoded, encoding: .utf8)
 
 		debugPrint(str!, expected)

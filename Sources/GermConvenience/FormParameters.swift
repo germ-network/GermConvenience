@@ -7,7 +7,7 @@
 import Foundation
 
 public struct FormParameters: Sendable {
-	private var storage: [String: [String]]
+	var storage: [String: [String]]
 
 	public static var contentType: HTTPContentType { .formUrlEncoded }
 
@@ -95,5 +95,11 @@ public struct FormParameters: Sendable {
 
 		return input.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
 			?? input
+	}
+	
+	public mutating func mergeReplacingValues(with overriding: FormParameters) {
+		for (key, value) in overriding.storage {
+			set(name: key, value: value)
+		}
 	}
 }
