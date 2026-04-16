@@ -85,9 +85,11 @@ public struct FormParameters: Sendable {
 	}
 
 	private func encodeString(input: String) -> String {
-		let result = input.replacingOccurrences(of: " ", with: "+")
+		//for compatibility, not behaving strictly following
+		//https://datatracker.ietf.org/doc/html/rfc1866 which specifies this
+//		let result = input.replacingOccurrences(of: " ", with: "+")
 
-		return result.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
-			?? result
+		return input.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
+			?? input
 	}
 }
