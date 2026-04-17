@@ -26,14 +26,14 @@ public struct FormParameters: Sendable {
 		}
 	}
 
-	public subscript(name: String) -> String? {
+	public subscript(name: String) -> [String]? {
 		get {
-			storage[name]?.first
+			storage[name]
 		}
 
 		set(newValue) {
-			if let value = newValue {
-				storage[name, default: []].append(value)
+			if let newValue {
+				storage[name] = newValue
 			} else {
 				storage.removeValue(forKey: name)
 			}
@@ -96,10 +96,31 @@ public struct FormParameters: Sendable {
 		return input.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
 			?? input
 	}
-	
+
 	public mutating func mergeReplacingValues(with overriding: FormParameters) {
 		for (key, value) in overriding.storage {
 			set(name: key, value: value)
 		}
+	}
+}
+
+extension FormParameters: Equatable {
+	public static func == (lhs: FormParameters, rhs: FormParameters) -> Bool {
+		guard lhs.storage.keys.count == rhs.storage.keys.count else {
+			return false
+		}
+		for (key, lhsValue) in lhs.storage {
+			guard let rhsValue = rhs.storage[key] else {
+				return false
+			}
+			guard lhsValue.count == rhsValue.count else {
+				return false
+			}
+			guard lhsValue.sorted() == rhsValue.sorted() else {
+				return false
+			}
+		}
+
+		return true
 	}
 }
