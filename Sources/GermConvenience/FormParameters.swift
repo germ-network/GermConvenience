@@ -6,6 +6,7 @@
 //
 import Foundation
 
+///This is modeled on https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
 public struct FormParameters: Sendable {
 	var storage: [String: [String]]
 
