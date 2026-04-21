@@ -4,7 +4,7 @@
 
 ### Patch Changes
 
-- [#12](https://github.com/germ-network/GermConvenience/pull/12) [`03f45e6`](https://github.com/germ-network/GermConvenience/commit/03f45e66d776ef1301a49b0b83c52a25dcd7b646) Thanks [@germ-mark](https://github.com/germ-mark)! - Add a FormParameters struct for handling form data
+- [#12](https://github.com/germ-network/GermConvenience/pull/12) [`03f45e6`](https://github.com/germ-network/GermConvenience/commit/03f45e66d776ef1301a49b0b83c52a25dcd7b646) Thanks [@ThisIsMissEm](https://github.com/ThisIsMissEm)! - Add a FormParameters struct for handling form data
 
 - [#8](https://github.com/germ-network/GermConvenience/pull/8) [`bf741d4`](https://github.com/germ-network/GermConvenience/commit/bf741d4f57d28b90fb76b6ccecd0b112e02a9f91) Thanks [@nnabeyang](https://github.com/nnabeyang)! - Improve HTTPDataResponse debug visibility for better error diagnosis
 
