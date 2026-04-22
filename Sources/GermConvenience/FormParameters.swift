@@ -1,0 +1,127 @@
+//
+//  FormParameters.swift
+//  GermConvenience
+//
+//  Created by Emelia on 4/11/26.
+//
+import Foundation
+
+///This is modeled on https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams
+public struct FormParameters: Sendable {
+	var storage: [String: [String]]
+
+	public static var contentType: HTTPContentType { .formUrlEncoded }
+
+	public init() {
+		self.storage = [:]
+	}
+
+	public init(_ parameters: [String: [String]]) {
+		self.storage = parameters
+	}
+
+	public init(_ parameters: [String: String]) {
+		self.storage = parameters.reduce(into: [:]) {
+			storage, parameter in
+			storage[parameter.key, default: []].append(parameter.value)
+		}
+	}
+
+	public subscript(name: String) -> [String]? {
+		get {
+			storage[name]
+		}
+
+		set(newValue) {
+			if let newValue {
+				storage[name] = newValue
+			} else {
+				storage.removeValue(forKey: name)
+			}
+		}
+	}
+
+	public func getAll(name: String) -> [String]? {
+		return self.storage[name]
+	}
+
+	public func get(name: String) -> String? {
+		return storage[name]?.first
+	}
+
+	public mutating func set(name: String, value: [String]) {
+		storage[name] = value
+	}
+
+	public mutating func add(name: String, value: String) {
+		storage[name, default: []].append(value)
+	}
+
+	public mutating func delete(name: String) {
+		storage.removeValue(forKey: name)
+	}
+
+	public func entries() -> [[String]] {
+		storage.flatMap({ parameter -> [[String]] in
+			parameter.value.map { value -> [String] in
+				[parameter.key, value]
+			}
+		})
+	}
+
+	public func asQueryItems() -> [URLQueryItem] {
+		storage.flatMap({ parameter -> [URLQueryItem] in
+			parameter.value.map({ value -> URLQueryItem in
+				.init(name: parameter.key, value: value)
+			})
+		})
+	}
+
+	public var data: Data {
+		storage.flatMap { parameter -> [String] in
+			let encodedKey = encodeString(input: parameter.key)
+
+			return parameter.value.compactMap { value -> String? in
+				let encodedValue = encodeString(input: value)
+
+				return [encodedKey, encodedValue].joined(separator: "=")
+			}
+		}.joined(separator: "&").utf8Data
+	}
+
+	private func encodeString(input: String) -> String {
+		//for compatibility, not behaving strictly following
+		//https://datatracker.ietf.org/doc/html/rfc1866 which specifies this
+		//		let result = input.replacingOccurrences(of: " ", with: "+")
+
+		return input.addingPercentEncoding(withAllowedCharacters: .urlFormEncodedAllowed)
+			?? input
+	}
+
+	public mutating func mergeReplacingValues(with overriding: FormParameters) {
+		for (key, value) in overriding.storage {
+			set(name: key, value: value)
+		}
+	}
+}
+
+extension FormParameters: Equatable {
+	public static func == (lhs: FormParameters, rhs: FormParameters) -> Bool {
+		guard lhs.storage.keys.count == rhs.storage.keys.count else {
+			return false
+		}
+		for (key, lhsValue) in lhs.storage {
+			guard let rhsValue = rhs.storage[key] else {
+				return false
+			}
+			guard lhsValue.count == rhsValue.count else {
+				return false
+			}
+			guard lhsValue.sorted() == rhsValue.sorted() else {
+				return false
+			}
+		}
+
+		return true
+	}
+}
