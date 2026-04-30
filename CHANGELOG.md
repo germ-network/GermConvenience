@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.1.5
+
+### Patch Changes
+
+- [#20](https://github.com/germ-network/GermConvenience/pull/20) [`ed5fcf6`](https://github.com/germ-network/GermConvenience/commit/ed5fcf6b256d1184f8f8a4451ac6070570786eed) Thanks [@germ-mark](https://github.com/germ-mark)! - workaround linker issue with a firstline method
+
 ## 0.1.4
 
 ### Patch Changes
