@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.1.4
+
+### Patch Changes
+
+- [#17](https://github.com/germ-network/GermConvenience/pull/17) [`9410f02`](https://github.com/germ-network/GermConvenience/commit/9410f02441c5028818c2ae02600d3ffde379a3dd) Thanks [@germ-mark](https://github.com/germ-mark)! - public base64URLEncodedBytes method
+
 ## 0.1.3
 
 ### Patch Changes
