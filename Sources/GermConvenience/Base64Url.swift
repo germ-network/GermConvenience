@@ -49,7 +49,7 @@ extension String {
 }
 
 extension DataProtocol {
-	package func base64URLEncodedBytes() -> [UInt8] {
+	public func base64URLEncodedBytes() -> [UInt8] {
 		Data(copyBytes()).base64EncodedData().base64URLEscaped().copyBytes()
 	}
 }
