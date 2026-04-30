@@ -86,7 +86,8 @@ extension HTTPDataResponse: CustomStringConvertible {
 		} else {
 			bodyDisplay = "<\(data.count) bytes>"
 		}
-		return "\(_typeName(Self.self, qualified: true))(status: \(response.status.code), data: \(bodyDisplay))"
+		return
+			"\(_typeName(Self.self, qualified: true))(status: \(response.status.code), data: \(bodyDisplay))"
 	}
 }
 
