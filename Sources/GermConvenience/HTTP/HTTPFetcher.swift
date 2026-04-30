@@ -66,3 +66,24 @@ final class ManualRedirect: NSObject, URLSessionTaskDelegate {
 		nil
 	}
 }
+
+//we use this to resolve well-known
+//works around what appears to be a linking issue with test bundles and
+//HTTPTypesFoundationMethods
+extension URLSession {
+	public func firstLine(request: HTTPRequest) async throws -> String? {
+		let (byteStream, response) = try await URLSession.shared.bytes(
+			for: request)
+		guard response.status == .ok else {
+			var collectedData = Data()
+			for try await byte in byteStream {
+				collectedData.append(byte)
+			}
+			throw
+				HTTPResponseError
+				.unsuccessful(response.status.code, collectedData)
+		}
+		
+		return try await byteStream.lines.first(where: { _ in true })
+	}
+}
