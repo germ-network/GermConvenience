@@ -24,6 +24,7 @@ public struct BundledHTTPRequest: Sendable {
 		//works around a runtime crash in the HTTPRequest initializer that
 		//has a runtime precondition of non-nil scheme
 		guard url.scheme != nil else {
+			assert(false)
 			throw HTTPRequestError.missingScheme
 		}
 		if method == .get, body != nil {
