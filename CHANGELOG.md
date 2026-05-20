@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.2.2
+
+### Patch Changes
+
+- [#26](https://github.com/germ-network/GermConvenience/pull/26) [`7a1ccd4`](https://github.com/germ-network/GermConvenience/commit/7a1ccd47229e2c1f52f2f2a5c461157766c818d6) Thanks [@germ-mark](https://github.com/germ-mark)! - restore deleted urlscheme
+
 ## 0.2.1
 
 ### Patch Changes
