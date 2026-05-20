@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.2.3
+
+### Patch Changes
+
+- [#28](https://github.com/germ-network/GermConvenience/pull/28) [`015721c`](https://github.com/germ-network/GermConvenience/commit/015721c745ae9622dd9085f52df398f4181c917e) Thanks [@germ-mark](https://github.com/germ-mark)! - restore firstline
+
 ## 0.2.2
 
 ### Patch Changes
