@@ -1,5 +1,15 @@
 # @germ-network/germ-convenience
 
+## 0.2.0
+
+### Minor Changes
+
+- [#22](https://github.com/germ-network/GermConvenience/pull/22) [`0df31ef`](https://github.com/germ-network/GermConvenience/commit/0df31ef2f548e06eb0abb5e652ae49380b5679fb) Thanks [@germ-mark](https://github.com/germ-mark)! - consolidate on a single BundledHTTPRequest initializer that protects against a runtime crash
+
+### Patch Changes
+
+- [#22](https://github.com/germ-network/GermConvenience/pull/22) [`8e9ce21`](https://github.com/germ-network/GermConvenience/commit/8e9ce216aadb82b336cfcde655d3bab37a453398) Thanks [@germ-mark](https://github.com/germ-mark)! - remove base64url, recommend importing swift-libp2p/swift-bases instead
+
 ## 0.1.5
 
 ### Patch Changes
