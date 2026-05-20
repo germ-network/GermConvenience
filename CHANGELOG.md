@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.2.1
+
+### Patch Changes
+
+- [#24](https://github.com/germ-network/GermConvenience/pull/24) [`770cc01`](https://github.com/germ-network/GermConvenience/commit/770cc01a876783dcb98551d02243696f6ab342eb) Thanks [@germ-mark](https://github.com/germ-mark)! - fix merge issue with renamed folder
+
 ## 0.2.0
 
 ### Minor Changes
