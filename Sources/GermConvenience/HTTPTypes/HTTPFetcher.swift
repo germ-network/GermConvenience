@@ -70,6 +70,66 @@ final class ManualRedirect: NSObject, URLSessionTaskDelegate {
 //we use this to resolve well-known
 //works around what appears to be a linking issue with test bundles and
 //HTTPTypesFoundationMethods
+//https://forums.swift.org/t/asyncbytes-and-asynclinesequence-not-available-on-linux/73601
+#if os(Linux) || os(Android)
+//don't have URLSession.bytes(for), so need to use the sessionDelegate
+final class StreamingDelegate: NSObject, URLSessionTaskDelegate, URLSessionDataDelegate {
+	let onBytesReceived: (@Sendable (Data) -> Void)?
+	let onComplete: (@Sendable (Error?) -> Void)?
+	
+	init(
+		onBytesReceived: (@Sendable(Data) -> Void)?,
+		onComplete: (@Sendable(Error?) -> Void)?
+	) {
+		self.onBytesReceived = onBytesReceived
+		self.onComplete = onComplete
+	}
+	
+	func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+		onBytesReceived?(data)
+	}
+	
+	func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+		onComplete?(error)
+	}
+	
+	// 2. Wrap the delegate inside an AsyncStream wrapper
+	static func streamBytes(from urlRequest: URLRequest) -> AsyncThrowingStream<Data, Error> {
+		return AsyncThrowingStream { continuation in
+			let delegate = StreamingDelegate() {
+				continuation.yield($0)
+			} onComplete: { error in
+				if let error = error {
+					continuation.finish(throwing: error)
+				} else {
+					continuation.finish()
+				}
+			}
+
+			let configuration = URLSessionConfiguration.default
+			let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
+			
+			
+			let task = session.dataTask(with: urlRequest)
+			task.resume()
+		}
+	}
+}
+
+extension URLSession {
+	public func firstLine(request: HTTPRequest) async throws -> String? {
+		let stream = StreamingDelegate.streamBytes(
+			from: try URLRequest(httpRequest: request).tryUnwrap
+		)
+		let firstLine = try await stream.first(where: { _ in true })
+		guard let firstLine else {
+			return nil
+		}
+		return String(bytes: firstLine, encoding: .utf8)
+
+	}
+}
+#else
 extension URLSession {
 	public func firstLine(request: HTTPRequest) async throws -> String? {
 		let (byteStream, response) = try await URLSession.shared.bytes(
@@ -87,3 +147,4 @@ extension URLSession {
 		return try await byteStream.lines.first(where: { _ in true })
 	}
 }
+#endif
