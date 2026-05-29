@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.2.4
+
+### Patch Changes
+
+- [#30](https://github.com/germ-network/GermConvenience/pull/30) [`bcb848f`](https://github.com/germ-network/GermConvenience/commit/bcb848f4f253fc3892583bb475e8386bffae71bd) Thanks [@germ-mark](https://github.com/germ-mark)! - enable successful android build
+
 ## 0.2.3
 
 ### Patch Changes
