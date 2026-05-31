@@ -104,7 +104,7 @@ extension Data {
 	}
 }
 
-public enum HTTPResponseError: Error {
+public enum HTTPResponseError: Error, Equatable {
 	case unsuccessful(Int, Data)
 	case unsuccessfulString(Int, String)
 }

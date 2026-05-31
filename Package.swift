@@ -37,7 +37,8 @@ let package = Package(
 		.target(
 			name: "GermConvenienceTesting",
 			dependencies: [
-				"GermConvenience"
+				"GermConvenience",
+				.product(name: "HTTPTypes", package: "swift-http-types"),
 			]),
 		.testTarget(
 			name: "GermConvenienceTestingTests",
