@@ -41,7 +41,9 @@ extension URLSession: HTTPFetcher {
 		for request: BundledHTTPRequest
 	) async throws -> HTTPDataResponse {
 		if let body = request.body {
-			guard request.request.method != .get else {
+			guard request.request.method != .get,
+				request.request.method != .head
+			else {
 				throw HTTPRequestError.getMethodWithBody
 			}
 			let (data, httpResponse) = try await upload(

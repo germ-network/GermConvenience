@@ -27,7 +27,7 @@ public struct BundledHTTPRequest: Sendable {
 			assert(false)
 			throw HTTPRequestError.missingScheme
 		}
-		if method == .get, body != nil {
+		if method == .get || method == .head, body != nil {
 			throw HTTPRequestError.getMethodWithBody
 		}
 
@@ -46,7 +46,7 @@ public enum HTTPRequestError: LocalizedError {
 
 	public var errorDescription: String? {
 		switch self {
-		case .getMethodWithBody: "Cannot use .get method with a body"
+		case .getMethodWithBody: "Cannot use .get or .head method with a body"
 		case .missingScheme: "URL is missing a scheme"
 		}
 	}
