@@ -35,7 +35,7 @@ public enum MethodMatcher: Hashable, Sendable {
 	public static let delete: Self = .method(.delete)
 }
 
-actor MockHTTPFetcher: HTTPFetcher {
+public actor MockHTTPFetcher: HTTPFetcher {
 	public enum Errors: Equatable, Error {
 		case missingOnUrl
 		case tooManyRequests
@@ -47,6 +47,8 @@ actor MockHTTPFetcher: HTTPFetcher {
 		let url: URL
 		let method: MethodMatcher
 	}
+
+	public init() {}
 
 	private var currentUrl: URL?
 	private var currentMethod: MethodMatcher = .post
