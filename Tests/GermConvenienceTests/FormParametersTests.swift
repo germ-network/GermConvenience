@@ -1,16 +1,18 @@
 import Foundation
 import Testing
 
-@testable import GermConvenience
+import GermConvenience
 
-let testVectors = [
-	["foo": ["bar", "quux"]],
-	["föo": ["bār"]],
-	["föo": ["bar"], "foo": ["bar"]],
-	[:],
-]
 
-@Suite("FormParameters") struct TestFormParameters {
+@Suite("FormParameters")
+struct TestFormParameters {
+	static let testVectors = [
+		["foo": ["bar", "quux"]],
+		["föo": ["bār"]],
+		["föo": ["bar"], "foo": ["bar"]],
+		[:],
+	]
+	
 	@Test("Set multiple with the same key") func testSetMultiple() throws {
 		var params = FormParameters()
 		params.add(name: "foo", value: "bar")

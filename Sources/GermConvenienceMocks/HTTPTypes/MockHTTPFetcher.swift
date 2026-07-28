@@ -35,7 +35,7 @@ public enum MethodMatcher: Hashable, Sendable {
 	public static let delete: Self = .method(.delete)
 }
 
-public final class MockHTTPFetcher: HTTPFetcher, @unchecked Sendable {
+public actor MockHTTPFetcher: HTTPFetcher {
 	public enum Errors: Equatable, Error {
 		case missingOnUrl
 		case tooManyRequests
@@ -48,7 +48,8 @@ public final class MockHTTPFetcher: HTTPFetcher, @unchecked Sendable {
 		let method: MethodMatcher
 	}
 
-	private let lock = NSLock()
+	public init() {}
+
 	private var currentUrl: URL?
 	private var currentMethod: MethodMatcher = .post
 	private var handlers: [RequestKey: [Result<HTTPDataResponse, Error>]] = [:]
@@ -71,33 +72,31 @@ public final class MockHTTPFetcher: HTTPFetcher, @unchecked Sendable {
 		return self
 	}
 
-	public func data(for request: BundledHTTPRequest) async throws -> HTTPDataResponse {
-		try lock.withLock {
-			guard let url = request.request.url else {
-				throw Errors.unmockedRequest(request)
-			}
-			let exactKey = RequestKey(url: url, method: .method(request.request.method))
-			let anyKey = RequestKey(url: url, method: .any)
-			let exactHandlerCount = handlers[exactKey, default: []].count
-			let exactRequestCount = requests[exactKey, default: []].count
-			let key: RequestKey =
-				(exactHandlerCount > 0 && exactRequestCount < exactHandlerCount)
-				? exactKey : anyKey
-
-			let handlerCount = handlers[key, default: []].count
-			if handlerCount == 0 {
-				throw Errors.unmockedRequest(request)
-			}
-
-			requests[key, default: []].append(request)
-			requestLog[url, default: []].append(request)
-			let requestCount = requests[key, default: []].count
-			if requestCount > handlerCount {
-				throw Errors.tooManyRequests
-			}
-
-			return try handlers[key, default: []][requestCount - 1].get()
+	public func data(for request: BundledHTTPRequest) throws -> HTTPDataResponse {
+		guard let url = request.request.url else {
+			throw Errors.unmockedRequest(request)
 		}
+		let exactKey = RequestKey(url: url, method: .method(request.request.method))
+		let anyKey = RequestKey(url: url, method: .any)
+		let exactHandlerCount = handlers[exactKey, default: []].count
+		let exactRequestCount = requests[exactKey, default: []].count
+		let key: RequestKey =
+			(exactHandlerCount > 0 && exactRequestCount < exactHandlerCount)
+			? exactKey : anyKey
+
+		let handlerCount = handlers[key, default: []].count
+		if handlerCount == 0 {
+			throw Errors.unmockedRequest(request)
+		}
+
+		requests[key, default: []].append(request)
+		requestLog[url, default: []].append(request)
+		let requestCount = requests[key, default: []].count
+		if requestCount > handlerCount {
+			throw Errors.tooManyRequests
+		}
+
+		return try handlers[key, default: []][requestCount - 1].get()
 	}
 
 	public func requests(for url: URL) -> [BundledHTTPRequest] {
@@ -143,11 +142,5 @@ public final class MockHTTPFetcher: HTTPFetcher, @unchecked Sendable {
 		handlers.allSatisfy { key, queue in
 			requests[key, default: []].count >= queue.count
 		}
-	}
-
-	private func _typeAssertions() {
-		let _: any HTTPFetcher = MockHTTPFetcher()
-		let fetcher = MockHTTPFetcher()
-		let _: MockHTTPFetcher = fetcher.on(URL(string: "https://example.com")!)
 	}
 }

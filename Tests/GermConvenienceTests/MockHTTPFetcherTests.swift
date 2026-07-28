@@ -3,8 +3,8 @@ import HTTPTypes
 import HTTPTypesFoundation
 import Testing
 
-@testable import GermConvenience
-@testable import GermConvenienceTesting
+import GermConvenience
+import GermConvenienceMocks
 
 #if canImport(FoundationNetworking)
 	import FoundationNetworking
@@ -16,7 +16,7 @@ import Testing
 	let tokenResponse = HTTPDataResponse.ok("tokenResponse")
 
 	@Test func registeredURLReturnsQueuedResponse() async throws {
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(tokenUrl)
 			.enqueue(.success(tokenResponse))
 
@@ -24,15 +24,15 @@ import Testing
 		let result = try await mock.data(for: request)
 
 		#expect(result.data == tokenResponse.data)
-		#expect(mock.allRequested)
+		#expect(await mock.allRequested)
 
-		#expect(mock.requests(for: tokenUrl) == [request])
-		#expect(try mock.firstRequest(for: tokenUrl) == request)
+		#expect(await mock.requests(for: tokenUrl) == [request])
+		#expect(try await mock.firstRequest(for: tokenUrl) == request)
 	}
 
 	@Test func enqueuedErrorPropagates() async throws {
 		let error = HTTPResponseError.unsuccessful(401, Data())
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(tokenUrl)
 			.enqueue(.failure(error))
 
@@ -42,12 +42,12 @@ import Testing
 			try await mock.data(for: request)
 		}
 
-		#expect(mock.allRequested)
-		#expect(mock.requests(for: tokenUrl) == [request])
+		#expect(await mock.allRequested)
+		#expect(await mock.requests(for: tokenUrl) == [request])
 	}
 
 	@Test func unregisteredMethodThrows() async throws {
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(tokenUrl, method: .post)
 			.enqueue(.success(tokenResponse))
 
@@ -65,7 +65,7 @@ import Testing
 	}
 
 	@Test func unregisteredURLThrows() async throws {
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(tokenUrl)
 			.enqueue(.success(tokenResponse))
 
@@ -83,7 +83,7 @@ import Testing
 	}
 
 	@Test func unmockedURLThrows() async throws {
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(revokeUrl).enqueue(.success(.ok("revoked")))
 
 		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
@@ -101,7 +101,7 @@ import Testing
 
 		let response = HTTPDataResponse.ok()
 
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(tokenUrl)
 			.enqueue(.success(response))
 
@@ -113,16 +113,16 @@ import Testing
 
 		// We should have multiple requests, even though the second request failed
 		// with tooManyRequests:
-		#expect(mock.requests(for: tokenUrl) == [request1, request2])
-		#expect(try mock.firstRequest(for: tokenUrl) == request1)
-		#expect(try mock.secondRequest(for: tokenUrl) == request2)
+		#expect(await mock.requests(for: tokenUrl) == [request1, request2])
+		#expect(try await mock.firstRequest(for: tokenUrl) == request1)
+		#expect(try await mock.secondRequest(for: tokenUrl) == request2)
 	}
 
 	@Test func exactMethodFallsBackToAny() async throws {
 		let postResponse = HTTPDataResponse.ok("post")
 		let anyResponse = HTTPDataResponse.ok("any")
 
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(tokenUrl, method: .post).enqueue(.success(postResponse))
 			.on(tokenUrl).enqueue(.success(anyResponse))
 
@@ -132,16 +132,16 @@ import Testing
 		#expect(try await mock.data(for: postRequest).data == postResponse.data)
 		#expect(try await mock.data(for: getRequest).data == anyResponse.data)
 
-		#expect(mock.requests(for: tokenUrl).count == 2)
-		#expect(mock.requests(for: tokenUrl, method: .post) == [postRequest])
-		#expect(mock.requests(for: tokenUrl, method: .get) == [getRequest])
+		#expect(await mock.requests(for: tokenUrl).count == 2)
+		#expect(await mock.requests(for: tokenUrl, method: .post) == [postRequest])
+		#expect(await mock.requests(for: tokenUrl, method: .get) == [getRequest])
 	}
 
 	@Test func exhaustedExactHandlerFallsBackToAny() async throws {
 		let first = HTTPDataResponse.ok("first")
 		let fallback = HTTPDataResponse.ok("fallback")
 
-		let mock = try MockHTTPFetcher()
+		let mock = try await MockHTTPFetcher()
 			.on(tokenUrl, method: .post).enqueue(.success(first))
 			.on(tokenUrl).enqueue(.success(fallback))
 

@@ -1,19 +1,20 @@
 import Foundation
 import Testing
 
-@testable import GermConvenience
-@testable import GermConvenienceTesting
+import GermConvenience
+import GermConvenienceMocks
 
-let testVectors = [
-	["grant_type": ["authorization_code"]],
-	["client_id": ["foo"], "code": ["bar123"]],
-	["code": ["abc123=="]],
-	["scope": ["read", "write"]],
-	["state": ["hello world"]],
-	[:],
-]
-
-@Suite("FormParameters+Parsing") struct TestFormParameters {
+@Suite("FormParameters+Parsing")
+struct TestFormParametersParsing {
+	static let testVectors = [
+		["grant_type": ["authorization_code"]],
+		["client_id": ["foo"], "code": ["bar123"]],
+		["code": ["abc123=="]],
+		["scope": ["read", "write"]],
+		["state": ["hello world"]],
+		[:],
+	]
+	
 	@Test("Parsing from .data", arguments: testVectors) func testInOutData(
 		vector: [String: [String]]
 	) throws {

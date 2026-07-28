@@ -13,8 +13,8 @@ let package = Package(
 			targets: ["GermConvenience"]
 		),
 		.library(
-			name: "GermConvenienceTesting",
-			targets: ["GermConvenienceTesting"]
+			name: "GermConvenienceMocks",
+			targets: ["GermConvenienceMocks"]
 		),
 	],
 	dependencies: [
@@ -30,22 +30,15 @@ let package = Package(
 				.product(name: "HTTPTypesFoundation", package: "swift-http-types"),
 			]
 		),
-		.testTarget(
-			name: "GermConvenienceTests",
-			dependencies: ["GermConvenience"]
-		),
 		.target(
-			name: "GermConvenienceTesting",
+			name: "GermConvenienceMocks",
 			dependencies: [
 				"GermConvenience",
 				.product(name: "HTTPTypes", package: "swift-http-types"),
 			]),
 		.testTarget(
-			name: "GermConvenienceTestingTests",
-			dependencies: [
-				"GermConvenienceTesting",
-				"GermConvenience",
-			]
+			name: "GermConvenienceTests",
+			dependencies: ["GermConvenience", "GermConvenienceMocks"]
 		),
 	]
 )
