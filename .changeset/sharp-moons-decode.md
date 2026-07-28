@@ -12,5 +12,11 @@ selects the branch and decode failures propagate.
 
 A failure response whose body does not decode as the error type now throws
 `HTTPResponseError.unsuccessful`, preserving the status code and raw bytes, instead of
-a bare `DecodingError`. `HTTPResponseError` gains `code` and `bodyString` accessors so
-callers can read either case without matching on both.
+a bare `DecodingError`.
+
+Every failure path in this module now reports `HTTPResponseError.unsuccessful`.
+`expectSuccess()` previously reported `.unsuccessfulString` whenever the body happened
+to be UTF-8, so the two differed for the same response, and an empty body arrived as
+`.unsuccessfulString(code, "")`. `.unsuccessfulString` remains in the enum for existing
+callers but is no longer thrown from here; read the body through the new `bodyString`
+accessor, which works on either case. `code` is also new.

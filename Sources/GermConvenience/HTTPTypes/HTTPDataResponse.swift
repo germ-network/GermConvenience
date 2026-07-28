@@ -33,13 +33,7 @@ public struct HTTPDataResponse: Sendable {
 
 	func expect(status: HTTPResponse.Status.Kind) throws {
 		guard response.status.kind == status else {
-			if let stringResponse = String(data: data, encoding: .utf8) {
-				throw
-					HTTPResponseError
-					.unsuccessfulString(response.status.code, stringResponse)
-			} else {
-				throw HTTPResponseError.unsuccessful(response.status.code, data)
-			}
+			throw HTTPResponseError.unsuccessful(response.status.code, data)
 		}
 	}
 
@@ -108,8 +102,13 @@ extension Data {
 
 public enum HTTPResponseError: Error {
 	case unsuccessful(Int, Data)
+
+	//no longer thrown from this module - every failure path reports .unsuccessful
+	//and reads the body through bodyString. Kept so existing callers still compile
 	case unsuccessfulString(Int, String)
 
+	//the status the response actually carried, which for expect(statusCode:) and
+	//success(code:) may itself be a 2xx that simply was not the one required
 	public var code: Int {
 		switch self {
 		case .unsuccessful(let code, _), .unsuccessfulString(let code, _): code

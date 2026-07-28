@@ -97,6 +97,17 @@ import Testing
 			return
 		}
 	}
+
+	//documents a sharp edge rather than endorsing it: success() always has a result
+	//type to decode, so a bodiless 2xx fails as a decode error and the status is
+	//lost. Callers with no success body want expectSuccess(orError:) instead
+	@Test("a 2xx with no body at all fails to decode the result type")
+	func emptySuccessBodyFailsToDecode() throws {
+		#expect(throws: DecodingError.self) {
+			try Self.response(.noContent)
+				.success(decodeResult: TokenResult.self, orError: ErrorBody.self)
+		}
+	}
 }
 
 @Suite("HTTPDataResponse.success(code:)") struct TestHTTPDataResponseSuccessCode {
@@ -121,8 +132,9 @@ import Testing
 		#expect(result == TokenResult(accessToken: "abc123"))
 	}
 
-	//a 200 is successful but is not the expected 201
-	@Test("a mismatched status code decodes the error body")
+	//behavior is the same before and after the fix - this pins the code-exact
+	//branch selection, it is not a regression test
+	@Test("a successful but unexpected status code decodes the error body")
 	func mismatchedCodeDecodesErrorBody() throws {
 		let parsed =
 			try TestHTTPDataResponse
@@ -152,6 +164,101 @@ import Testing
 					orError: ErrorBody.self
 				)
 		}
+	}
+
+	@Test("a failure status decodes the error body")
+	func failureStatusDecodesErrorBody() throws {
+		let parsed =
+			try TestHTTPDataResponse
+			.response(.badRequest, TestHTTPDataResponse.errorShapedBody)
+			.success(
+				code: 201,
+				decodeResult: TokenResult.self,
+				orError: ErrorBody.self
+			)
+
+		guard case .error(let error, let status) = parsed else {
+			Issue.record("expected .error, got \(parsed)")
+			return
+		}
+		#expect(error == ErrorBody(error: "invalid_request"))
+		#expect(status.code == 400)
+	}
+
+	//the thrown case is named unsuccessful but carries the 2xx it actually got.
+	//matches expect(statusCode:), which has always reported the mismatch this way
+	@Test("an unexpected 2xx with an undecodable error body reports that 2xx")
+	func mismatchedCodeWithUndecodableErrorBodyReportsActualStatus() throws {
+		let thrown = try #require(
+			#expect(throws: HTTPResponseError.self) {
+				try TestHTTPDataResponse
+					.response(.ok, TestHTTPDataResponse.resultShapedBody)
+					.success(
+						code: 201,
+						decodeResult: TokenResult.self,
+						orError: ErrorBody.self
+					)
+			}
+		)
+
+		#expect(thrown.code == 200)
+	}
+}
+
+@Suite("HTTPDataResponse failure reporting") struct TestFailureReporting {
+	typealias TokenResult = TestHTTPDataResponse.TokenResult
+	typealias ErrorBody = TestHTTPDataResponse.ErrorBody
+
+	//every failure path reports the same case for the same input, so callers never
+	//have to match both. Before, expectSuccess() alone reported .unsuccessfulString
+	@Test("every failure path reports .unsuccessful with the same payload")
+	func failurePathsAgree() throws {
+		let body = "plain text failure"
+		let response = TestHTTPDataResponse.response(.badRequest, body)
+
+		let thrown: [HTTPResponseError] = [
+			try #require(
+				#expect(throws: HTTPResponseError.self) {
+					try response.expectSuccess()
+				}),
+			try #require(
+				#expect(throws: HTTPResponseError.self) {
+					try response.expect(statusCode: 200)
+				}),
+			try #require(
+				#expect(throws: HTTPResponseError.self) {
+					try response.success(
+						decodeResult: TokenResult.self,
+						orError: ErrorBody.self)
+				}),
+		]
+
+		for error in thrown {
+			guard case .unsuccessful(let code, let data) = error else {
+				Issue.record("expected .unsuccessful, got \(error)")
+				continue
+			}
+			#expect(code == 400)
+			#expect(data == body.utf8Data)
+			#expect(error.bodyString == body)
+		}
+	}
+
+	//an empty body used to report .unsuccessfulString(400, "") because
+	//String(data: Data(), encoding: .utf8) is "" rather than nil
+	@Test("an empty failure body is not reported as an empty string")
+	func emptyFailureBody() throws {
+		let thrown = try #require(
+			#expect(throws: HTTPResponseError.self) {
+				try TestHTTPDataResponse.response(.badRequest).expectSuccess()
+			})
+
+		guard case .unsuccessful(let code, let data) = thrown else {
+			Issue.record("expected .unsuccessful, got \(thrown)")
+			return
+		}
+		#expect(code == 400)
+		#expect(data.isEmpty)
 	}
 }
 
