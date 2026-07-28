@@ -262,6 +262,97 @@ import Testing
 	}
 }
 
+@Suite("ErrorResult.get") struct TestErrorResultGet {
+	typealias TokenResult = TestHTTPDataResponse.TokenResult
+	typealias ErrorBody = TestHTTPDataResponse.ErrorBody
+
+	enum Mapped: Error, Equatable {
+		case oauth(ErrorBody, Int)
+	}
+
+	@Test("a result is returned without invoking the mapper")
+	func resultSkipsMapper() throws {
+		var mapperCalled = false
+		let parsed = HTTPDataResponse.ErrorResult<TokenResult, ErrorBody>
+			.result(.init(accessToken: "abc123"))
+
+		let result = try parsed.get { error, status in
+			mapperCalled = true
+			return Mapped.oauth(error, status.code)
+		}
+
+		#expect(result == TokenResult(accessToken: "abc123"))
+		#expect(mapperCalled == false)
+	}
+
+	@Test("an error throws exactly what the mapper returns")
+	func errorThrowsMappedError() throws {
+		let parsed = HTTPDataResponse.ErrorResult<TokenResult, ErrorBody>
+			.error(.init(error: "invalid_token"), .badRequest)
+
+		#expect(throws: Mapped.oauth(ErrorBody(error: "invalid_token"), 400)) {
+			try parsed.get { Mapped.oauth($0, $1.code) }
+		}
+	}
+}
+
+@Suite("HTTPDataResponse.expectSuccess(orError:)") struct TestExpectSuccessOrError {
+	typealias ErrorBody = TestHTTPDataResponse.ErrorBody
+
+	enum Mapped: Error, Equatable {
+		case oauth(ErrorBody, Int)
+	}
+
+	@Test(
+		"a successful status skips decoding entirely",
+		arguments: [HTTPResponse.Status.ok, .created, .noContent]
+	)
+	func successSkipsErrorDecoding(status: HTTPResponse.Status) throws {
+		var mapperCalled = false
+
+		try TestHTTPDataResponse.response(status, TestHTTPDataResponse.errorShapedBody)
+			.expectSuccess(orError: ErrorBody.self) { error, status in
+				mapperCalled = true
+				return Mapped.oauth(error, status.code)
+			}
+
+		#expect(mapperCalled == false)
+	}
+
+	@Test("a decodable error body throws the mapped error")
+	func mapsDecodedErrorBody() throws {
+		#expect(throws: Mapped.oauth(ErrorBody(error: "invalid_request"), 400)) {
+			try TestHTTPDataResponse
+				.response(.badRequest, TestHTTPDataResponse.errorShapedBody)
+				.expectSuccess(orError: ErrorBody.self) {
+					Mapped.oauth($0, $1.code)
+				}
+		}
+	}
+
+	@Test(
+		"an undecodable or empty error body preserves the raw response",
+		arguments: ["", "not json"]
+	)
+	func fallsBackToRawResponse(body: String) throws {
+		let thrown = try #require(
+			#expect(throws: HTTPResponseError.self) {
+				try TestHTTPDataResponse.response(.badRequest, body)
+					.expectSuccess(orError: ErrorBody.self) {
+						Mapped.oauth($0, $1.code)
+					}
+			}
+		)
+
+		guard case .unsuccessful(let code, let data) = thrown else {
+			Issue.record("expected .unsuccessful, got \(thrown)")
+			return
+		}
+		#expect(code == 400)
+		#expect(data == body.utf8Data)
+	}
+}
+
 @Suite("HTTPResponseError") struct TestHTTPResponseError {
 	@Test("code reads from either case")
 	func codeReadsFromEitherCase() {

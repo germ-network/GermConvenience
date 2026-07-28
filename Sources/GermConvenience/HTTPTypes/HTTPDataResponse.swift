@@ -72,6 +72,34 @@ public struct HTTPDataResponse: Sendable {
 		}
 		return .result(try data.decode())
 	}
+
+	/// Returns normally when the status is 2xx.
+	///
+	/// Otherwise decodes the body as `E` and throws whatever `mapError` returns,
+	/// falling back to `HTTPResponseError.unsuccessful` - status code and raw bytes
+	/// intact - when the body does not decode as `E`.
+	///
+	/// For endpoints that return no success body. When there is a result to decode,
+	/// use `success(decodeResult:orError:)` with `get(mapError:)`.
+	public func expectSuccess<E: Decodable>(
+		orError errorType: E.Type,
+		mapError: (E, HTTPResponse.Status) -> any Error
+	) throws {
+		guard response.status.kind != .successful else { return }
+		throw mapError(try decodedError(errorType), response.status)
+	}
+}
+
+extension HTTPDataResponse.ErrorResult {
+	/// Returns the decoded result, or throws the error produced by `mapError`.
+	public func get(mapError: (E, HTTPResponse.Status) -> any Error) throws -> R {
+		switch self {
+		case .result(let result):
+			return result
+		case .error(let error, let status):
+			throw mapError(error, status)
+		}
+	}
 }
 
 extension HTTPDataResponse: CustomStringConvertible {
