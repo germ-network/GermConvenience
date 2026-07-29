@@ -1,5 +1,82 @@
 # @germ-network/germ-convenience
 
+## 0.3.0
+
+### Minor Changes
+
+- [#38](https://github.com/germ-network/GermConvenience/pull/38) [`83f028d`](https://github.com/germ-network/GermConvenience/commit/83f028dd6a9e86146839734b916448c054ffc33c) Thanks [@germ-mark](https://github.com/germ-mark)! - Make BundledHTTPRequest's init checks hold, and add Equatable
+
+  **Source-breaking — callers that mutate a `BundledHTTPRequest` must migrate.**
+  `request` and `body` are no longer publicly settable, so the checks in `init`
+  cannot be undone after construction. Previously a caller could assign a body onto
+  a `.get`, or flip the method of one that had a body, and reach a state `init`
+  rejects. Code that assigned header fields in place:
+
+  ```swift
+  var output = request
+  output.request.headerFields[.authorization] = value
+  ```
+
+  becomes:
+
+  ```swift
+  let output = request.settingHeader(value, for: .authorization)
+  ```
+
+  SwiftPM's `from:` is `upToNextMajor`, so `minor` does not gate this for consumers
+  already on 0.x — oauth4swift is the only one that mutates, and needs its companion
+  change released in step.
+
+  - `init` rejects a url `HTTPRequest` cannot represent (`urn:`, `mailto:`) with the
+    new `HTTPRequestError.unrepresentableURL`, rather than building a request whose
+    `url` is nil, which could never be sent and compared equal to every other url of
+    that shape
+  - the `missingScheme` path no longer `assert(false)`s before throwing, so it
+    surfaces the error in debug builds instead of trapping
+  - `BundledHTTPRequest` and `HTTPRequestError` are now `Equatable`
+
+### Patch Changes
+
+- [#32](https://github.com/germ-network/GermConvenience/pull/32) [`edbedaf`](https://github.com/germ-network/GermConvenience/commit/edbedaf33518588dd835a5c4b807e69087022546) Thanks [@ThisIsMissEm](https://github.com/ThisIsMissEm)! - Add GermConvenienceMocks library
+
+  This provides us with a way to assert things for testing HTTPFetcher in oauth4swift.
+
+  - FormParameters+Parsing: init(parsing:) extensions for Data, URLComponents, and [URLQueryItem]
+  - MockHTTPFetcher: method-aware HTTP mock with per-URL handler queues, exact-to-any fallback, and request logging
+  - HTTPResponseError: Equatable conformance to support error matching in tests
+
+  `BundledHTTPRequest`'s Equatable conformance moved to the type itself in [#38](https://github.com/germ-network/GermConvenience/issues/38), so the
+  copy this branch carried in GermConvenienceMocks is gone - it would otherwise have
+  been a duplicate that silently shadowed the owner's.
+
+- [#32](https://github.com/germ-network/GermConvenience/pull/32) [`46c6bce`](https://github.com/germ-network/GermConvenience/commit/46c6bcef3d0b85b55041bb90656ac330420a1350) Thanks [@ThisIsMissEm](https://github.com/ThisIsMissEm)! - Correctly throw on head requests sent with a body
+
+- [#35](https://github.com/germ-network/GermConvenience/pull/35) [`cf1ca2d`](https://github.com/germ-network/GermConvenience/commit/cf1ca2d4a665a97f85615a453f3dc17a5a5b9e04) Thanks [@germ-mark](https://github.com/germ-mark)! - Add `ErrorResult.get(mapError:)` and `HTTPDataResponse.expectSuccess(orError:mapError:)`
+
+  - `get(mapError:)` returns the decoded result or throws a mapped error, replacing the
+    switch callers were hand-rolling
+  - `expectSuccess(orError:mapError:)` for endpoints such as token revocation that return
+    no success body. Lifted from oauth4swift
+
+- [#34](https://github.com/germ-network/GermConvenience/pull/34) [`2ac42e1`](https://github.com/germ-network/GermConvenience/commit/2ac42e1a4d6084960d19d151f2b1a4edda523996) Thanks [@germ-mark](https://github.com/germ-mark)! - Fix `HTTPDataResponse.success` error handling
+
+  `success(decodeResult:orError:)` and `success(code:decodeResult:orError:)` wrapped
+  the status check and the result decode in one `do`, so a successful response whose
+  body failed to decode was retried as an error body — returning a bogus `.error` for a
+  2xx, or masking the real `DecodingError` with one about the error type. The status now
+  selects the branch and decode failures propagate.
+
+  A failure response whose body does not decode as the error type now throws
+  `HTTPResponseError.unsuccessful`, preserving the status code and raw bytes, instead of
+  a bare `DecodingError`.
+
+  Every failure path in this module now reports `HTTPResponseError.unsuccessful`.
+  `expectSuccess()` previously reported `.unsuccessfulString` whenever the body happened
+  to be UTF-8, so the two differed for the same response, and an empty body arrived as
+  `.unsuccessfulString(code, "")`. `.unsuccessfulString` remains in the enum for existing
+  callers but is no longer thrown from here; read the body through the new `bodyString`
+  accessor, which works on either case. `code` is also new.
+
 ## 0.2.4
 
 ### Patch Changes
