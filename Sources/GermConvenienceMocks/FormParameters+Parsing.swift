@@ -40,9 +40,9 @@ extension FormParameters {
 }
 
 private func decodeString(_ input: Substring) -> String {
-	return input.removingPercentEncoding ?? String(input)
+	input.removingPercentEncoding ?? String(input)
 }
 
 private func decodeString(_ input: String) -> String {
-	return input.removingPercentEncoding ?? input
+	input.removingPercentEncoding ?? input
 }
