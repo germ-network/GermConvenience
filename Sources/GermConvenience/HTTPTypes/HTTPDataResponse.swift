@@ -33,13 +33,7 @@ public struct HTTPDataResponse: Sendable {
 
 	func expect(status: HTTPResponse.Status.Kind) throws {
 		guard response.status.kind == status else {
-			if let stringResponse = String(data: data, encoding: .utf8) {
-				throw
-					HTTPResponseError
-					.unsuccessfulString(response.status.code, stringResponse)
-			} else {
-				throw HTTPResponseError.unsuccessful(response.status.code, data)
-			}
+			throw HTTPResponseError.unsuccessful(response.status.code, data)
 		}
 	}
 
@@ -48,33 +42,63 @@ public struct HTTPDataResponse: Sendable {
 		case error(E, HTTPResponse.Status)
 	}
 
+	//discards the decoding failure but preserves the status and every original byte,
+	//so nothing about the response is lost - only the decoder's complaint about a
+	//type the body was never going to be
+	private func decodedError<E: Decodable>(_ errorType: E.Type) throws -> E {
+		guard let decoded = try? data.decode() as E else {
+			throw HTTPResponseError.unsuccessful(response.status.code, data)
+		}
+		return decoded
+	}
+
 	public func success<R: Decodable, E: Decodable>(
 		code: Int,
 		decodeResult resultType: R.Type,
-		orError error: E.Type,
+		orError errorType: E.Type,
 	) throws -> ErrorResult<R, E> {
-		do {
-			let result: R = try expect(statusCode: code)
-				.decode()
-
-			return .result(result)
-		} catch {
-			return .error(try data.decode(), response.status)
+		guard response.status.code == code else {
+			return .error(try decodedError(errorType), response.status)
 		}
+		return .result(try data.decode())
 	}
 
 	public func success<R: Decodable, E: Decodable>(
 		decodeResult resultType: R.Type,
-		orError error: E.Type,
+		orError errorType: E.Type,
 	) throws -> ErrorResult<R, E> {
-		do {
-			try expect(status: .successful)
-
-			return .result(try data.decode())
-		} catch {
-			return .error(try data.decode(), response.status)
+		guard response.status.kind == .successful else {
+			return .error(try decodedError(errorType), response.status)
 		}
+		return .result(try data.decode())
+	}
 
+	/// Returns normally when the status is 2xx.
+	///
+	/// Otherwise decodes the body as `E` and throws whatever `mapError` returns,
+	/// falling back to `HTTPResponseError.unsuccessful` - status code and raw bytes
+	/// intact - when the body does not decode as `E`.
+	///
+	/// For endpoints that return no success body. When there is a result to decode,
+	/// use `success(decodeResult:orError:)` with `get(mapError:)`.
+	public func expectSuccess<E: Decodable>(
+		orError errorType: E.Type,
+		mapError: (E, HTTPResponse.Status) -> any Error
+	) throws {
+		guard response.status.kind != .successful else { return }
+		throw mapError(try decodedError(errorType), response.status)
+	}
+}
+
+extension HTTPDataResponse.ErrorResult {
+	/// Returns the decoded result, or throws the error produced by `mapError`.
+	public func get(mapError: (E, HTTPResponse.Status) -> any Error) throws -> R {
+		switch self {
+		case .result(let result):
+			return result
+		case .error(let error, let status):
+			throw mapError(error, status)
+		}
 	}
 }
 
@@ -106,5 +130,23 @@ extension Data {
 
 public enum HTTPResponseError: Error, Equatable {
 	case unsuccessful(Int, Data)
+
+	//no longer thrown from this module - every failure path reports .unsuccessful
+	//and reads the body through bodyString. Kept so existing callers still compile
 	case unsuccessfulString(Int, String)
+
+	//the status the response actually carried, which for expect(statusCode:) and
+	//success(code:) may itself be a 2xx that simply was not the one required
+	public var code: Int {
+		switch self {
+		case .unsuccessful(let code, _), .unsuccessfulString(let code, _): code
+		}
+	}
+
+	public var bodyString: String? {
+		switch self {
+		case .unsuccessful(_, let data): String(data: data, encoding: .utf8)
+		case .unsuccessfulString(_, let body): body
+		}
+	}
 }
