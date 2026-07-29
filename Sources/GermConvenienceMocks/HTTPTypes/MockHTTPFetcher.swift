@@ -2,6 +2,8 @@ import Foundation
 import GermConvenience
 import HTTPTypes
 
+//belongs on the type rather than here - germ-network/GermConvenience#38 moves it,
+//and this should be deleted when that lands to avoid a duplicate conformance
 extension BundledHTTPRequest: Equatable {
 	public static func == (lhs: BundledHTTPRequest, rhs: BundledHTTPRequest) -> Bool {
 		lhs.request.method == rhs.request.method && lhs.request.url == rhs.request.url
@@ -37,7 +39,6 @@ public enum MethodMatcher: Hashable, Sendable {
 
 public actor MockHTTPFetcher: HTTPFetcher {
 	public enum Errors: Equatable, Error {
-		case missingOnUrl
 		case tooManyRequests
 		case notRequested
 		case unmockedRequest(_ request: BundledHTTPRequest)
@@ -48,66 +49,101 @@ public actor MockHTTPFetcher: HTTPFetcher {
 		let method: MethodMatcher
 	}
 
+	/// The target of a registration, produced by `on(_:method:)`.
+	///
+	/// Carrying the url and method in the value rather than on the fetcher keeps
+	/// `on(…).enqueue(…)` atomic: two chains configuring the same fetcher
+	/// concurrently cannot enqueue a response against each other's url.
+	///
+	/// - Note: responses enqueued concurrently against the *same* url have no
+	///   defined order relative to each other.
+	public struct Registration: Sendable {
+		fileprivate let fetcher: MockHTTPFetcher
+		fileprivate let url: URL
+		fileprivate let method: MethodMatcher
+
+		@discardableResult
+		public func enqueue(
+			_ response: Result<HTTPDataResponse, Error>
+		) async -> MockHTTPFetcher {
+			await fetcher.append(url: url, method: method, response)
+			return fetcher
+		}
+	}
+
 	public init() {}
 
-	private var currentUrl: URL?
-	private var currentMethod: MethodMatcher = .post
 	private var handlers: [RequestKey: [Result<HTTPDataResponse, Error>]] = [:]
 	private var requests: [RequestKey: [BundledHTTPRequest]] = [:]
 	private var requestLog: [URL: [BundledHTTPRequest]] = [:]
 
-	@discardableResult
-	public func on(_ url: URL, method: MethodMatcher = .any) -> Self {
-		currentUrl = url
-		currentMethod = method
-		return self
+	public nonisolated func on(_ url: URL, method: MethodMatcher = .any) -> Registration {
+		Registration(fetcher: self, url: url, method: method)
 	}
 
-	@discardableResult
-	public func enqueue(_ response: Result<HTTPDataResponse, Error>) throws -> Self {
-		guard let url = currentUrl else {
-			throw Errors.missingOnUrl
-		}
-		handlers[RequestKey(url: url, method: currentMethod), default: []].append(response)
-		return self
+	//lookup keys off request.request.url, which HTTPRequest has round-tripped
+	//through its pseudo header fields - that rewrites a bare origin's empty path
+	//to "/". Register through the same round trip or on(origin) never matches
+	private nonisolated static func normalized(_ url: URL) -> URL {
+		guard url.scheme != nil else { return url }
+		return HTTPRequest(method: .get, url: url).url ?? url
+	}
+
+	fileprivate func append(
+		url: URL,
+		method: MethodMatcher,
+		_ response: Result<HTTPDataResponse, Error>
+	) {
+		handlers[RequestKey(url: Self.normalized(url), method: method), default: []]
+			.append(response)
+	}
+
+	private func remaining(_ key: RequestKey) -> Int {
+		handlers[key, default: []].count - requests[key, default: []].count
 	}
 
 	public func data(for request: BundledHTTPRequest) throws -> HTTPDataResponse {
 		guard let url = request.request.url else {
 			throw Errors.unmockedRequest(request)
 		}
+		// log every attempt, so a rejected request is still visible to assertions
+		requestLog[url, default: []].append(request)
+
 		let exactKey = RequestKey(url: url, method: .method(request.request.method))
 		let anyKey = RequestKey(url: url, method: .any)
-		let exactHandlerCount = handlers[exactKey, default: []].count
-		let exactRequestCount = requests[exactKey, default: []].count
-		let key: RequestKey =
-			(exactHandlerCount > 0 && exactRequestCount < exactHandlerCount)
-			? exactKey : anyKey
 
-		let handlerCount = handlers[key, default: []].count
-		if handlerCount == 0 {
+		let key: RequestKey
+		if remaining(exactKey) > 0 {
+			key = exactKey
+		} else if remaining(anyKey) > 0 {
+			// a drained exact queue falls back to .any, so a general handler can
+			// cover the remaining requests
+			key = anyKey
+		} else if handlers[exactKey] != nil || handlers[anyKey] != nil {
+			// registered, but every queued response has been consumed. Nothing is
+			// recorded against the key, so enqueuing more responses resumes here
+			throw Errors.tooManyRequests
+		} else {
 			throw Errors.unmockedRequest(request)
 		}
 
+		let index = requests[key, default: []].count
 		requests[key, default: []].append(request)
-		requestLog[url, default: []].append(request)
-		let requestCount = requests[key, default: []].count
-		if requestCount > handlerCount {
-			throw Errors.tooManyRequests
-		}
-
-		return try handlers[key, default: []][requestCount - 1].get()
+		return try handlers[key, default: []][index].get()
 	}
 
+	/// Every request sent to `url`, including ones rejected as unmocked or over
+	/// the queue length. `allRequested` counts only those that consumed a
+	/// response, so the two can disagree after a rejection.
 	public func requests(for url: URL) -> [BundledHTTPRequest] {
-		requestLog[url, default: []]
+		requestLog[Self.normalized(url), default: []]
 	}
 
 	public func requests(for url: URL, method: MethodMatcher) -> [BundledHTTPRequest] {
-		requestLog[url, default: []].filter {
+		requests(for: url).filter {
 			switch method {
-			case .any: return true
-			case .method(let m): return $0.request.method == m
+			case .any: true
+			case .method(let m): $0.request.method == m
 			}
 		}
 	}
