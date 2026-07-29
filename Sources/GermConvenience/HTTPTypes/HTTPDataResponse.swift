@@ -128,7 +128,7 @@ extension Data {
 	}
 }
 
-public enum HTTPResponseError: Error {
+public enum HTTPResponseError: Error, Equatable {
 	case unsuccessful(Int, Data)
 
 	//no longer thrown from this module - every failure path reports .unsuccessful

@@ -5,10 +5,10 @@ on:
     # branches:
     #   - main
     paths-ignore:
-      - 'README.md'
-      - 'CODE_OF_CONDUCT.md'
-      - '.editorconfig'
-      - '.spi.yml'
+      - "README.md"
+      - "CODE_OF_CONDUCT.md"
+      - ".editorconfig"
+      - ".spi.yml"
   pull_request:
     branches:
       - main
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Test platform ${{ matrix.destination }}
-        run: set -o pipefail && xcodebuild -skipMacroValidation -scheme GermConvenience -destination "${{ matrix.destination }}" test | xcbeautify
+        run: set -o pipefail && xcodebuild -skipMacroValidation -scheme GermConvenience-Package -destination "${{ matrix.destination }}" test | xcbeautify
   linux_test:
     name: Test Linux
     runs-on: ubuntu-latest
@@ -63,4 +63,4 @@ jobs:
       - name: "Test Swift Package on Android"
         uses: skiptools/swift-android-action@v2
         with:
-          swift-version: '6.3'
+          swift-version: "6.3"
