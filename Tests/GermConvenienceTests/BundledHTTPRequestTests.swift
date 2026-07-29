@@ -7,11 +7,27 @@ import Testing
 @Suite("BundledHTTPRequest") struct TestBundledHTTPRequest {
 	static let url = URL(string: "https://as.example/oauth/token")!
 
-	@Test("a get with a body is rejected")
-	func getRejectsABody() throws {
+	//RFC 9110: neither method carries content
+	@Test(
+		"a bodiless method with a body is rejected",
+		arguments: [HTTPRequest.Method.get, .head]
+	)
+	func bodilessMethodsRejectABody(method: HTTPRequest.Method) throws {
 		#expect(throws: HTTPRequestError.getMethodWithBody) {
-			try BundledHTTPRequest(method: .get, url: Self.url, body: Data([1]))
+			try BundledHTTPRequest(method: method, url: Self.url, body: Data([1]))
 		}
+	}
+
+	//the guard is duplicated in URLSession.data(for:), which was the real
+	//enforcement point back when the properties were publicly settable
+	@Test(
+		"a bodiless method without a body is fine",
+		arguments: [HTTPRequest.Method.get, .head]
+	)
+	func bodilessMethodsAllowNoBody(method: HTTPRequest.Method) throws {
+		let request = try BundledHTTPRequest(method: method, url: Self.url)
+		#expect(request.body == nil)
+		#expect(request.request.method == method)
 	}
 
 	//this path used to assert(false) before throwing, so in a debug build it

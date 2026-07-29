@@ -2,16 +2,6 @@ import Foundation
 import GermConvenience
 import HTTPTypes
 
-//belongs on the type rather than here - germ-network/GermConvenience#38 moves it,
-//and this should be deleted when that lands to avoid a duplicate conformance
-extension BundledHTTPRequest: Equatable {
-	public static func == (lhs: BundledHTTPRequest, rhs: BundledHTTPRequest) -> Bool {
-		lhs.request.method == rhs.request.method && lhs.request.url == rhs.request.url
-			&& lhs.request.headerFields == rhs.request.headerFields
-			&& lhs.body == rhs.body
-	}
-}
-
 extension HTTPDataResponse {
 	public static func ok(_ data: Data = Data()) -> Self {
 		Self(data: data, response: HTTPResponse(status: .ok))
