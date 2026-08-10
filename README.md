@@ -1,3 +1,9 @@
+# GermConvenience
+
+[![Apple](https://github.com/germ-network/GermConvenience/actions/workflows/ci-apple.yml/badge.svg)](https://github.com/germ-network/GermConvenience/actions/workflows/ci-apple.yml)
+[![Linux](https://github.com/germ-network/GermConvenience/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/germ-network/GermConvenience/actions/workflows/ci-linux.yml)
+[![Android](https://github.com/germ-network/GermConvenience/actions/workflows/ci-android.yml/badge.svg)](https://github.com/germ-network/GermConvenience/actions/workflows/ci-android.yml)
+
 In support of the [AtprotoOauth](https://github.com/germ-network/AtprotoOAuth) family of modular packages,
 shared helper implementations:
 * an HTTPDataResponse type for the return value of `URLSession.data(for:)`
