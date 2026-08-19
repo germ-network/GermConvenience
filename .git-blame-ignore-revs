@@ -1,0 +1,3 @@
+# Mass-reformat with swift-format; use this file to skip it in blame.
+# git config blame.ignoreRevsFile .git-blame-ignore-revs
+963381cab129e0fcf83dfe25598647f5ffcc84ef
