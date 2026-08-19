@@ -1,8 +1,7 @@
 import Foundation
-import Testing
-
 import GermConvenience
 import GermConvenienceMocks
+import Testing
 
 @Suite("FormParameters+Parsing")
 struct TestFormParametersParsing {
@@ -14,7 +13,7 @@ struct TestFormParametersParsing {
 		["state": ["hello world"]],
 		[:],
 	]
-	
+
 	@Test("Parsing from .data", arguments: testVectors) func testInOutData(
 		vector: [String: [String]]
 	) throws {
