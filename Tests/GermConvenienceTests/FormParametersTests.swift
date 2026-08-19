@@ -1,8 +1,6 @@
 import Foundation
-import Testing
-
 import GermConvenience
-
+import Testing
 
 @Suite("FormParameters")
 struct TestFormParameters {
@@ -12,7 +10,7 @@ struct TestFormParameters {
 		["föo": ["bar"], "foo": ["bar"]],
 		[:],
 	]
-	
+
 	@Test("Set multiple with the same key") func testSetMultiple() throws {
 		var params = FormParameters()
 		params.add(name: "foo", value: "bar")
