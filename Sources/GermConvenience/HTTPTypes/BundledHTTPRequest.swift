@@ -78,6 +78,9 @@ public enum HTTPRequestError: LocalizedError, Equatable {
 	case getMethodWithBody
 	case missingScheme
 	case unrepresentableURL(URL)
+	//URLSession delivers URLResponse; every http(s) request answers with
+	//HTTPURLResponse in practice, but the cast is still a cast.
+	case nonHTTPResponse
 
 	public var errorDescription: String? {
 		switch self {
@@ -85,6 +88,7 @@ public enum HTTPRequestError: LocalizedError, Equatable {
 		case .missingScheme: "URL is missing a scheme"
 		case .unrepresentableURL(let url):
 			"URL cannot be expressed as an HTTP request: \(url)"
+		case .nonHTTPResponse: "Response was not an HTTP response"
 		}
 	}
 }
