@@ -1,5 +1,5 @@
 ---
-"@germ-network/germconvenience": minor
+"@germ-network/germ-convenience": minor
 ---
 
 Add `HTTPStreamFetcher`, a public streaming counterpart to `HTTPFetcher`:
