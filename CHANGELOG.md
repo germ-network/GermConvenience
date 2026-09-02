@@ -1,5 +1,31 @@
 # @germ-network/germ-convenience
 
+## 0.4.0
+
+### Minor Changes
+
+- [#41](https://github.com/germ-network/GermConvenience/pull/41) [`f9d424c`](https://github.com/germ-network/GermConvenience/commit/f9d424c1e5484f9cf7279f46bf32763ee80befc6) Thanks [@germ-mark](https://github.com/germ-mark)! - Add `HTTPStreamFetcher`, a public streaming counterpart to `HTTPFetcher`:
+  `URLSession.streamingData(for:) -> (response: HTTPResponse, bytes:
+AsyncThrowingStream<Data, Error>)`, response known before any body byte, same
+  contract `URLSession.bytes(for:)` already gives on Apple. Additive — no
+  signature change to `HTTPFetcher` itself, so an existing conformer that only
+  implements `data(for:)` is unaffected.
+
+  On Apple, delegates to `bytes(for:)` and re-batches into `Data` chunks. On
+  Linux/Android, where corelibs Foundation has no `bytes(for:)`, a
+  `URLSessionDataDelegate` recovers the response and body from delegate
+  callbacks directly, reusing the caller's `URLSessionConfiguration` rather than
+  a hardcoded default.
+
+  Verified: the Apple path is tested against a real `URLSession` conformance
+  (not a mock) via a `URLProtocol` stub — response delivery, byte-identical
+  round-trip across multiple chunks, non-2xx delivered rather than thrown, and
+  empty-body completion. The round-trip test is mutation-verified: corrupting
+  the byte-accumulation loop makes it fail. The Linux/Android delegate path
+  compiles (confirmed by forcing that branch to type-check on this machine) but
+  is not runtime-tested here — needs real Linux/Android CI to prove the
+  response-then-body delegate ordering holds in practice.
+
 ## 0.3.0
 
 ### Minor Changes
