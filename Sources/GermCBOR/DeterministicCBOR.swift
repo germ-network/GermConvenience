@@ -3,10 +3,12 @@ import Foundation
 /// A CBOR value in a narrow grammar: integer- or text-keyed maps, arrays,
 /// byte strings, text strings, booleans and null.
 ///
-/// No tags, no floats, no bignums, no indefinite lengths. The grammar is
-/// narrow on purpose — this library targets canonical round-tripping of a
-/// small, fixed value shape, and a wider decoder is accepted input nobody
-/// needs.
+/// No tags, no floats, no bignums, no indefinite lengths. This is the CBOR
+/// profile COSE (RFC 9052) key and structure encoding needs, and supporting
+/// COSE is what this library is intended for — not a general-purpose CBOR
+/// codec. The grammar is narrow on purpose: canonical round-tripping of that
+/// small, fixed value shape, where a wider decoder is only accepted input
+/// nobody needs.
 public enum CBORValue: Sendable, Hashable {
 	case integer(Int64)
 	case bytes(Data)
