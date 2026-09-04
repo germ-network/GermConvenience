@@ -23,6 +23,13 @@ let package = Package(
 			name: "GermHTTPSignature",
 			targets: ["GermHTTPSignature"]
 		),
+		// A canonical CBOR value-model encoder/decoder, kept dependency-free
+		// so it can't pull swift-http-types or swift-crypto onto a consumer
+		// that only wants CBOR.
+		.library(
+			name: "GermCBOR",
+			targets: ["GermCBOR"]
+		),
 	],
 	dependencies: [
 		.package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
@@ -50,6 +57,9 @@ let package = Package(
 				.product(name: "Crypto", package: "swift-crypto")
 			]
 		),
+		.target(
+			name: "GermCBOR"
+		),
 		.testTarget(
 			name: "GermConvenienceTests",
 			dependencies: ["GermConvenience", "GermConvenienceMocks"]
@@ -60,6 +70,10 @@ let package = Package(
 				"GermHTTPSignature",
 				.product(name: "Crypto", package: "swift-crypto"),
 			]
+		),
+		.testTarget(
+			name: "GermCBORTests",
+			dependencies: ["GermCBOR"]
 		),
 	]
 )
