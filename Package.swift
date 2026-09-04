@@ -23,9 +23,9 @@ let package = Package(
 			name: "GermHTTPSignature",
 			targets: ["GermHTTPSignature"]
 		),
-		// A canonical CBOR value-model encoder/decoder, kept dependency-free
-		// so it can't pull swift-http-types or swift-crypto onto a consumer
-		// that only wants CBOR.
+		// A canonical CBOR value-model encoder/decoder for the COSE (RFC 9052)
+		// profile — kept dependency-free so it can't pull swift-http-types or
+		// swift-crypto onto a consumer that only wants COSE CBOR.
 		.library(
 			name: "GermCBOR",
 			targets: ["GermCBOR"]
