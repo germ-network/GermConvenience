@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.7.0
+
+### Minor Changes
+
+- [#48](https://github.com/germ-network/GermConvenience/pull/48) [`d27b746`](https://github.com/germ-network/GermConvenience/commit/d27b746e3a2fdf4025b06389b1c631b168db67e6) Thanks [@germ-mark](https://github.com/germ-mark)! - Add `GermCBOR`, a canonical (RFC 8949 §4.2.1) CBOR value-model encoder/decoder for the COSE (RFC 9052) profile — integer/text-keyed maps, arrays, byte/text strings, bool, null; no tags, floats, bignums, or indefinite lengths. Its own library product, Foundation-only, no dependencies. Intended for COSE key/structure encoding, not as a general-purpose CBOR codec.
+
 ## 0.6.0
 
 ### Minor Changes
