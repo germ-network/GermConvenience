@@ -16,9 +16,17 @@ let package = Package(
 			name: "GermConvenienceMocks",
 			targets: ["GermConvenienceMocks"]
 		),
+		// The RFC 9421 request signer is its own product so swift-crypto stays
+		// off the base GermConvenience target — only a consumer that imports
+		// GermHTTPSignature links it.
+		.library(
+			name: "GermHTTPSignature",
+			targets: ["GermHTTPSignature"]
+		),
 	],
 	dependencies: [
-		.package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0")
+		.package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
+		.package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0"),
 	],
 	targets: [
 		// Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -36,9 +44,22 @@ let package = Package(
 				"GermConvenience",
 				.product(name: "HTTPTypes", package: "swift-http-types"),
 			]),
+		.target(
+			name: "GermHTTPSignature",
+			dependencies: [
+				.product(name: "Crypto", package: "swift-crypto")
+			]
+		),
 		.testTarget(
 			name: "GermConvenienceTests",
 			dependencies: ["GermConvenience", "GermConvenienceMocks"]
+		),
+		.testTarget(
+			name: "GermHTTPSignatureTests",
+			dependencies: [
+				"GermHTTPSignature",
+				.product(name: "Crypto", package: "swift-crypto"),
+			]
 		),
 	]
 )
