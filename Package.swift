@@ -12,6 +12,12 @@ let package = Package(
 			name: "GermConvenience",
 			targets: ["GermConvenience"]
 		),
+		// The HTTPTypes/URLSession helpers, split out so the base GermConvenience
+		// (tryUnwrap, form encoding, etc.) carries no swift-http-types dependency.
+		.library(
+			name: "GermConvenienceHTTP",
+			targets: ["GermConvenienceHTTP"]
+		),
 		.library(
 			name: "GermConvenienceMocks",
 			targets: ["GermConvenienceMocks"]
@@ -39,8 +45,12 @@ let package = Package(
 		// Targets are the basic building blocks of a package, defining a module or a test suite.
 		// Targets can depend on other targets in this package and products from dependencies.
 		.target(
-			name: "GermConvenience",
+			name: "GermConvenience"
+		),
+		.target(
+			name: "GermConvenienceHTTP",
 			dependencies: [
+				"GermConvenience",
 				.product(name: "HTTPTypes", package: "swift-http-types"),
 				.product(name: "HTTPTypesFoundation", package: "swift-http-types"),
 			]
@@ -49,6 +59,7 @@ let package = Package(
 			name: "GermConvenienceMocks",
 			dependencies: [
 				"GermConvenience",
+				"GermConvenienceHTTP",
 				.product(name: "HTTPTypes", package: "swift-http-types"),
 			]),
 		.target(
@@ -62,7 +73,7 @@ let package = Package(
 		),
 		.testTarget(
 			name: "GermConvenienceTests",
-			dependencies: ["GermConvenience", "GermConvenienceMocks"]
+			dependencies: ["GermConvenience", "GermConvenienceMocks", "GermConvenienceHTTP"]
 		),
 		.testTarget(
 			name: "GermHTTPSignatureTests",
