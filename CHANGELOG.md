@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.8.0
+
+### Minor Changes
+
+- [#51](https://github.com/germ-network/GermConvenience/pull/51) [`86b5151`](https://github.com/germ-network/GermConvenience/commit/86b5151e0890ca915b91eb5a9e835b09a9a25996) Thanks [@germ-mark](https://github.com/germ-mark)! - Split the HTTPTypes/URLSession helpers into a new `GermConvenienceHTTP` product so the base `GermConvenience` (`tryUnwrap`, form encoding, `HTTPContentType`, etc.) carries no swift-http-types dependency. BREAKING for consumers of the HTTP fetchers / WebSocket helpers: add the `GermConvenienceHTTP` product and `import GermConvenienceHTTP` (base-convenience consumers are unaffected).
+
 ## 0.7.0
 
 ### Minor Changes
