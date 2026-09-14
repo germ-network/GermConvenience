@@ -19,6 +19,7 @@
 
 #if canImport(Darwin)
 	import Foundation
+	import GermConvenienceHTTP
 	import HTTPTypes
 	import Testing
 

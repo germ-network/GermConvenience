@@ -1,4 +1,5 @@
 import Foundation
+import GermConvenienceHTTP
 import HTTPTypes
 import Testing
 

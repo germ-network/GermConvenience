@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import GermConvenience
 import HTTPTypesFoundation
 
 /// The WebSocket counterpart to `HTTPFetcher`/`HTTPStreamFetcher`: `connect`
