@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.9.0
+
+### Minor Changes
+
+- [#53](https://github.com/germ-network/GermConvenience/pull/53) [`222d9b2`](https://github.com/germ-network/GermConvenience/commit/222d9b2e727b87f0fda47c7d9e2095dae6ff887b) Thanks [@germ-mark](https://github.com/germ-mark)! - Un-gate `URLSessionWebSocketConnecting` / `URLSessionWebSocketConnection` off Apple. corelibs Foundation's `FoundationNetworking` implements `URLSessionWebSocketTask` and `URLSessionWebSocketDelegate`, so the URLSession-backed conformer now compiles on Linux and Android instead of being Darwin-only. The `WebSocketConnecting` seam is unchanged: a consumer that prefers its own transport (e.g. OkHttp on Android) still supplies its own conformer.
+
 ## 0.8.0
 
 ### Minor Changes
