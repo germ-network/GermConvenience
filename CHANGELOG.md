@@ -1,5 +1,15 @@
 # @germ-network/germ-convenience
 
+## 0.10.0
+
+### Minor Changes
+
+- [#55](https://github.com/germ-network/GermConvenience/pull/55) [`f907c90`](https://github.com/germ-network/GermConvenience/commit/f907c9018dd4c2f0110ab5f1f37c7c53fa0ae6ca) Thanks [@germ-mark](https://github.com/germ-mark)! - Widen the `swift-crypto` dependency to `from: "5.0.0"`.
+
+  Part of the org-wide move to swift-crypto 5 (its span-based API is already
+  adopted by `swift-secret-bytes`). Builds and the full test suite pass against
+  5.0.0 unchanged.
+
 ## 0.9.0
 
 ### Minor Changes
