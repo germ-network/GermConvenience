@@ -73,7 +73,10 @@ let package = Package(
 		),
 		.testTarget(
 			name: "GermConvenienceTests",
-			dependencies: ["GermConvenience", "GermConvenienceMocks", "GermConvenienceHTTP"]
+			dependencies: [
+				"GermConvenience", "GermConvenienceMocks", "GermConvenienceHTTP",
+				.product(name: "Crypto", package: "swift-crypto"),
+			]
 		),
 		.testTarget(
 			name: "GermHTTPSignatureTests",
