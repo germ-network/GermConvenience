@@ -26,6 +26,8 @@ public protocol HTTPFetcher: Sendable {
 ///https://www.rfc-editor.org/rfc/rfc9728.html#section-3.2
 ///and auth server metadata
 ///https://datatracker.ietf.org/doc/html/rfc8414#section-3.2
+///The redirect itself is not followed: the 3xx response (status and headers) is
+///returned as the result, with no promise about its body.
 extension URLSession {
 	static public func manualRedirect() -> URLSession {
 		URLSession(
@@ -60,13 +62,18 @@ extension URLSession: HTTPFetcher {
 }
 
 final class ManualRedirect: NSObject, URLSessionTaskDelegate {
+	//corelibs FoundationNetworking only ever dispatches the completion-handler
+	//form of this delegate method - an async-only witness is silently skipped
+	//there, and the default behavior follows the redirect. On Darwin the two
+	//forms share one selector, so implementing only this one is sufficient.
 	func urlSession(
 		_ session: URLSession,
 		task: URLSessionTask,
 		willPerformHTTPRedirection response: HTTPURLResponse,
-		newRequest request: URLRequest
-	) async -> URLRequest? {
-		nil
+		newRequest request: URLRequest,
+		completionHandler: @escaping @Sendable (URLRequest?) -> Void
+	) {
+		completionHandler(nil)
 	}
 }
 

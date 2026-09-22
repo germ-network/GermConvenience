@@ -63,6 +63,13 @@ public enum WebSocketConnectError: Error, Sendable {
 ///    there was never a response at all) takes a delegate.
 /// 2. `receive()` on one task must not be called concurrently — the
 ///    returned connection is an `actor`.
+///
+/// A third, corelibs-only distinction: off Apple, `URLSession` only routes
+/// WebSocket lifecycle callbacks (open/close/complete) to its *session*
+/// delegate — a task-level delegate is never consulted there, so `connect`
+/// builds its own per-connection delegate session off Apple. The injected
+/// `session` contributes its configuration only in that case, not its
+/// delegate.
 public struct URLSessionWebSocketConnecting: WebSocketConnecting {
 	private let session: URLSession
 
@@ -73,17 +80,28 @@ public struct URLSessionWebSocketConnecting: WebSocketConnecting {
 	public func connect(_ request: BundledHTTPRequest) async throws
 		-> any WebSocketConnection
 	{
+		try Task.checkCancellation()
+
 		var urlRequest = try URLRequest(httpRequest: request.request).tryUnwrap
 		urlRequest.timeoutInterval = 15
 
-		let task = session.webSocketTask(with: urlRequest)
-		// The delegate is the only way to recover the handshake outcome —
-		// without it `didOpenWithProtocol` is never observed and
-		// `waitForOpen` never resumes.
 		let handshake = HandshakeDelegate()
-		task.delegate = handshake
-
-		try await handshake.waitForOpen(resuming: task)
+		let task = try await handshake.waitForOpen {
+			#if canImport(FoundationNetworking)
+				let connectingSession = URLSession(
+					configuration: session.configuration, delegate: handshake,
+					delegateQueue: nil)
+				let task = connectingSession.webSocketTask(with: urlRequest)
+				// Not deferred to close()/deinit: invalidateAndCancel()
+				// would send close code 0 on corelibs.
+				connectingSession.finishTasksAndInvalidate()
+				return task
+			#else
+				let task = session.webSocketTask(with: urlRequest)
+				task.delegate = handshake
+				return task
+			#endif
+		}
 		return URLSessionWebSocketConnection(task: task)
 	}
 }
@@ -102,29 +120,81 @@ private final class HandshakeDelegate: NSObject, URLSessionWebSocketDelegate,
 {
 	private let lock = NSLock()
 	private var continuation: CheckedContinuation<Void, Error>?
+	/// Guards against `onCancel` racing the continuation being stored.
+	private var cancelled = false
+	private var task: URLSessionWebSocketTask?
 
-	func waitForOpen(resuming task: URLSessionWebSocketTask) async throws {
-		try await withCheckedThrowingContinuation { continuation in
-			lock.withLock { self.continuation = continuation }
-			task.resume()
+	/// `makeTask` runs only once cancellation is ruled out under `lock`, so a
+	/// cancelled caller never creates a task that's then never resumed.
+	func waitForOpen(makeTask: () -> URLSessionWebSocketTask) async throws
+		-> URLSessionWebSocketTask
+	{
+		try await withTaskCancellationHandler {
+			try await withCheckedThrowingContinuation { continuation in
+				let task: URLSessionWebSocketTask? = lock.withLock {
+					guard !cancelled else { return nil }
+					let task = makeTask()
+					self.task = task
+					self.continuation = continuation
+					return task
+				}
+				guard let task else {
+					continuation.resume(throwing: CancellationError())
+					return
+				}
+				task.resume()
+			}
+		} onCancel: {
+			let pending: CheckedContinuation<Void, Error>? = lock.withLock {
+				cancelled = true
+				defer { continuation = nil }
+				return continuation
+			}
+			// A handshake that already resolved keeps its connection. On
+			// corelibs this cancel doesn't stop an in-flight transfer: it
+			// runs to the 15s timeout, or gets a close frame if a 101 arrives.
+			guard let pending else { return }
+			pending.resume(throwing: CancellationError())
+			lock.withLock { task }?.cancel(with: .goingAway, reason: nil)
 		}
+		return lock.withLock { task }!
 	}
 
 	/// A signed upgrade always refuses redirects: forwarding the
 	/// `Authorization` header (including the live challenge nonce) to
 	/// wherever a 3xx points would leak it.
+	///
+	/// The completion-handler form: the only one corelibs dispatches, and
+	/// the same selector as `async` on Darwin. In practice only reached on
+	/// Darwin — libcurl refuses a non-101 WebSocket upgrade before any
+	/// redirect handling runs.
 	func urlSession(
 		_ session: URLSession, task: URLSessionTask,
 		willPerformHTTPRedirection response: HTTPURLResponse,
-		newRequest request: URLRequest
-	) async -> URLRequest? {
-		nil
+		newRequest request: URLRequest,
+		completionHandler: @escaping @Sendable (URLRequest?) -> Void
+	) {
+		completionHandler(nil)
 	}
 
+	/// On corelibs a non-101 handshake response still reaches this callback
+	/// (Darwin fails the task before ever calling it) — the status has to
+	/// be checked here rather than assumed successful. No `task.cancel()`
+	/// on the failure path: libcurl has already failed the transfer by the
+	/// time this fires there.
 	func urlSession(
 		_ session: URLSession, webSocketTask: URLSessionWebSocketTask,
 		didOpenWithProtocol protocol: String?
 	) {
+		if let response = webSocketTask.response as? HTTPURLResponse,
+			response.statusCode != 101
+		{
+			resolve(
+				.failure(
+					WebSocketConnectError.handshakeFailed(
+						status: response.statusCode)))
+			return
+		}
 		resolve(.success(()))
 	}
 
