@@ -1,5 +1,28 @@
 # @germ-network/germ-convenience
 
+## 0.11.0
+
+### Minor Changes
+
+- [#60](https://github.com/germ-network/GermConvenience/pull/60) [`e7b3d0c`](https://github.com/germ-network/GermConvenience/commit/e7b3d0c70caafb1817a2563dcdc6a5b8f0163de3) Thanks [@germ-mark](https://github.com/germ-mark)! - Add `RetryingHTTPFetcher`, an `HTTPFetcher` decorator that retries idempotent
+  (GET/HEAD) requests around 429 rate limiting, transient network errors, and
+  5xx responses, with bounded exponential backoff and a per-attempt timeout.
+  Available on iOS 16 / macOS 13 / tvOS 16 / watchOS 9 and newer.
+
+### Patch Changes
+
+- [#57](https://github.com/germ-network/GermConvenience/pull/57) [`870e1e7`](https://github.com/germ-network/GermConvenience/commit/870e1e7ed80fef98fdc91a1b35e11621af5ed91c) Thanks [@germ-mark](https://github.com/germ-mark)! - Fix two Linux/Android-only bugs in `GermConvenienceHTTP`.
+
+  `URLSession.manualRedirect()` followed redirects instead of refusing them there — its delegate relied on the `async` form of the redirect method, which swift-corelibs-foundation's `FoundationNetworking` never calls. Now refuses (the returned 3xx has an empty body there; status and headers are unaffected). Darwin was never affected (its importer treats the async and completion-handler forms as the same selector).
+
+  `URLSessionWebSocketConnecting.connect` never returned on Linux/Android, on success as much as on failure — corelibs only dispatches WebSocket lifecycle callbacks to a _session_ delegate, and `connect` was only ever setting a _task_ delegate there. Now completes; a non-101 handshake response fails with `WebSocketConnectError.handshakeFailed(status:)`, and `connect` honours task cancellation instead of hanging past it. Off Apple, the `URLSession` passed to `URLSessionWebSocketConnecting.init` now contributes its configuration only, not its delegate. Darwin behaviour is unchanged except that cancelling now actually ends a pending `connect`.
+
+- [#59](https://github.com/germ-network/GermConvenience/pull/59) [`1e911d3`](https://github.com/germ-network/GermConvenience/commit/1e911d3677406768f813de137fcce4487238f615) Thanks [@germ-mark](https://github.com/germ-mark)! - Fix `URLSession.streamingData(for:)` (`HTTPStreamFetcher`) never returning on Linux/Android, and dropping the request body on every platform.
+
+  Off Apple, `streamingData` relied on the `async` form of `URLSessionDataDelegate`'s response-delivery method, which swift-corelibs-foundation's `FoundationNetworking` never calls — the response side never resolved once any response arrived (a transport failure before any response came back did still surface). Now uses the completion-handler form corelibs actually dispatches, and a 3xx with no usable `Location` (which corelibs never delivers to that callback) is recovered from the completed task instead of hanging. Cancelling a pending `streamingData` call now ends it off Apple too, surfacing as `URLError(.cancelled)`, matching Darwin.
+
+  Separately, `request.body` was silently discarded by `streamingData` on every platform, Apple included — now attached as `httpBody`. Consumers that stream a request body through `streamingData(for:)` need this version to actually send it.
+
 ## 0.10.0
 
 ### Minor Changes
