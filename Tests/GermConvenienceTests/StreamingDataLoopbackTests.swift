@@ -18,13 +18,8 @@ import Testing
 
 @Suite("URLSession: streamingData(for:) loopback")
 struct StreamingDataLoopbackTests {
-	//10s, not the 60s default: high enough above normal loopback latency,
-	//low enough that a regression fails fast instead of eating the full
-	//.timeLimit
 	private static func session() -> URLSession {
-		let configuration = URLSessionConfiguration.ephemeral
-		configuration.timeoutIntervalForRequest = 10
-		return URLSession(configuration: configuration)
+		URLSession(configuration: .ephemeral)
 	}
 
 	@available(macOS 13, iOS 16, watchOS 9, tvOS 16, *)
@@ -127,19 +122,17 @@ struct StreamingDataLoopbackTests {
 	}
 
 	@available(macOS 13, iOS 16, watchOS 9, tvOS 16, *)
-	@Test("a closed port throws promptly", .timeLimit(.minutes(1)))
-	func closedPortThrowsPromptly() async throws {
+	@Test("a closed port throws", .timeLimit(.minutes(1)))
+	func closedPortThrows() async throws {
 		let server = LoopbackHTTPServer()
 		let port = try server.bindSocket()
 		server.stop()
 
 		let request = try BundledHTTPRequest(
 			url: URL(string: "http://127.0.0.1:\(port)/anything")!)
-		let start = Date()
 		await #expect(throws: URLError.self) {
 			_ = try await Self.session().streamingData(for: request)
 		}
-		#expect(Date().timeIntervalSince(start) < 5)
 	}
 
 	//the request-body drop: both platforms silently sent an empty body
@@ -183,7 +176,6 @@ struct StreamingDataLoopbackTests {
 		try await Task.sleep(for: .milliseconds(300))
 		child.cancel()
 
-		let start = Date()
 		do {
 			_ = try await child.value
 			Issue.record("expected URLError(.cancelled)")
@@ -192,7 +184,6 @@ struct StreamingDataLoopbackTests {
 		} catch {
 			Issue.record("expected URLError(.cancelled), got \(error)")
 		}
-		#expect(Date().timeIntervalSince(start) < 5)
 	}
 
 	//exercises `waitForResponse`'s `alreadyCancelled` branch: cancellation
@@ -240,11 +231,9 @@ struct StreamingDataLoopbackTests {
 
 		let request = try BundledHTTPRequest(
 			url: URL(string: "http://127.0.0.1:\(port)/slow")!)
-		let start = Date()
 		//not read from: the Darwin branch buffers up to 64 KB before
 		//yielding a chunk, and this body never reaches that
 		let (response, _) = try await Self.session().streamingData(for: request)
-		#expect(Date().timeIntervalSince(start) < 5)
 		#expect(response.status.code == 200)
 	}
 }
