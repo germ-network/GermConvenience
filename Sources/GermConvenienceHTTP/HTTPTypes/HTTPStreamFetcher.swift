@@ -31,7 +31,16 @@ extension URLSession: HTTPStreamFetcher {
 			for request: BundledHTTPRequest
 		) async throws -> (response: HTTPResponse, bytes: AsyncThrowingStream<Data, Error>)
 		{
-			let (byteStream, response) = try await self.bytes(for: request.request)
+			try Self.checkBodyMethod(request)
+			guard var urlRequest = URLRequest(httpRequest: request.request) else {
+				throw HTTPRequestError.missingScheme
+			}
+			urlRequest.httpBody = request.body
+
+			let (byteStream, urlResponse) = try await self.bytes(for: urlRequest)
+			guard let response = (urlResponse as? HTTPURLResponse)?.httpResponse else {
+				throw HTTPRequestError.nonHTTPResponse
+			}
 			let stream = AsyncThrowingStream<Data, Error> { continuation in
 				let task = Task {
 					do {
@@ -62,9 +71,11 @@ extension URLSession: HTTPStreamFetcher {
 			for request: BundledHTTPRequest
 		) async throws -> (response: HTTPResponse, bytes: AsyncThrowingStream<Data, Error>)
 		{
-			guard let urlRequest = URLRequest(httpRequest: request.request) else {
+			try Self.checkBodyMethod(request)
+			guard var urlRequest = URLRequest(httpRequest: request.request) else {
 				throw HTTPRequestError.missingScheme
 			}
+			urlRequest.httpBody = request.body
 			//Reuses self's configuration rather than .default, so a caller's
 			//timeout/cache/protocol-class customization (including a test's
 			//injected URLProtocol) applies here exactly as it would to any
@@ -75,6 +86,15 @@ extension URLSession: HTTPStreamFetcher {
 	#endif
 
 	fileprivate static let streamChunkSize = 64 * 1024
+
+	//Mirrors `HTTPFetcher.data(for:)`'s guard; `BundledHTTPRequest.init`
+	//already rejects this, so unreachable in practice - defence in depth.
+	fileprivate static func checkBodyMethod(_ request: BundledHTTPRequest) throws {
+		guard request.body != nil,
+			request.request.method == .get || request.request.method == .head
+		else { return }
+		throw HTTPRequestError.getMethodWithBody
+	}
 }
 
 #if !canImport(Darwin)
@@ -87,46 +107,81 @@ extension URLSession: HTTPStreamFetcher {
 		URLSessionDataDelegate,
 		@unchecked Sendable
 	{
-		//`didReceive response` and `didCompleteWithError` can each resolve the
-		//response side exactly once (the latter only if the task fails before
-		//headers ever arrive) — the lock is what makes "exactly once" true
-		//across two delegate callbacks that are not otherwise ordered against
-		//each other.
 		private let lock = NSLock()
+		private var responseContinuation: CheckedContinuation<HTTPResponse, Error>?
 		private var responseResumed = false
-		private let onResponse: @Sendable (Result<HTTPResponse, Error>) -> Void
+		private var cancelled = false
+		private var task: URLSessionDataTask?
 		private let onBytesReceived: @Sendable (Data) -> Void
 		private let onComplete: @Sendable (Error?) -> Void
 
 		private init(
-			onResponse: @escaping @Sendable (Result<HTTPResponse, Error>) -> Void,
 			onBytesReceived: @escaping @Sendable (Data) -> Void,
 			onComplete: @escaping @Sendable (Error?) -> Void
 		) {
-			self.onResponse = onResponse
 			self.onBytesReceived = onBytesReceived
 			self.onComplete = onComplete
 		}
 
+		//Resolves inside `didReceive response` itself, not its completion handler; the lock guards this against `waitForResponse` storing the continuation.
 		private func resolveResponse(_ result: Result<HTTPResponse, Error>) {
-			lock.lock()
-			let alreadyResumed = responseResumed
-			responseResumed = true
-			lock.unlock()
-			guard !alreadyResumed else { return }
-			onResponse(result)
+			let pending: CheckedContinuation<HTTPResponse, Error>? = lock.withLock {
+				guard !responseResumed else { return nil }
+				responseResumed = true
+				defer { responseContinuation = nil }
+				return responseContinuation
+			}
+			switch result {
+			case .success(let response): pending?.resume(returning: response)
+			case .failure(let error): pending?.resume(throwing: error)
+			}
 		}
 
+		//Store-then-check: if `onCancel` already ran by the time this stores
+		//`task`, cancel it here instead of resuming - corelibs then reports
+		//`URLError(.cancelled)` through `didCompleteWithError` exactly once,
+		//resolving the response through the same path as any other failure.
+		func waitForResponse(task: URLSessionDataTask) async throws -> HTTPResponse {
+			try await withTaskCancellationHandler {
+				try await withCheckedThrowingContinuation { continuation in
+					let alreadyCancelled: Bool = lock.withLock {
+						responseContinuation = continuation
+						self.task = task
+						return cancelled
+					}
+					if alreadyCancelled {
+						task.cancel()
+					} else {
+						task.resume()
+					}
+				}
+			} onCancel: {
+				let task: URLSessionDataTask? = lock.withLock {
+					cancelled = true
+					return self.task
+				}
+				task?.cancel()
+			}
+		}
+
+		//The only form corelibs dispatches - the async witness is silently
+		//skipped there, and its protocol-extension default is `.allow`. Must
+		//match corelibs' declared signature exactly, or it's shadowed the
+		//same way.
 		func urlSession(
 			_ session: URLSession, dataTask: URLSessionDataTask,
-			didReceive response: URLResponse
-		) async -> URLSession.ResponseDisposition {
+			didReceive response: URLResponse,
+			completionHandler:
+				@escaping @Sendable (URLSession.ResponseDisposition) -> Void
+		) {
 			guard let http = (response as? HTTPURLResponse)?.httpResponse else {
 				resolveResponse(.failure(HTTPRequestError.nonHTTPResponse))
-				return .cancel
+				completionHandler(.cancel)
+				dataTask.cancel()
+				return
 			}
 			resolveResponse(.success(http))
-			return .allow
+			completionHandler(.allow)
 		}
 
 		func urlSession(
@@ -139,12 +194,15 @@ extension URLSession: HTTPStreamFetcher {
 			_ session: URLSession, task: URLSessionTask,
 			didCompleteWithError error: Error?
 		) {
-			//A task that fails before headers arrive (DNS/TLS/connection reset)
-			//never calls `didReceive response` at all — this is what stops the
-			//caller of `streamingData` waiting forever for a response that is
-			//never coming.
 			if let error {
 				resolveResponse(.failure(error))
+			} else if let http = (task.response as? HTTPURLResponse)?.httpResponse {
+				//corelibs never calls `didReceive response` for a 3xx with no
+				//(or an invalid) Location - it just completes with a nil
+				//error, the response already set on the task by then.
+				resolveResponse(.success(http))
+			} else {
+				resolveResponse(.failure(HTTPRequestError.nonHTTPResponse))
 			}
 			onComplete(error)
 		}
@@ -155,40 +213,34 @@ extension URLSession: HTTPStreamFetcher {
 		{
 			let (bodyStream, bodyContinuation) = AsyncThrowingStream<Data, Error>
 				.makeStream()
-			//The delegate and the task are both created and started inside the
-			//continuation closure, so no callback can possibly fire before the
-			//continuation it resumes exists. No second exactly-once guard here:
-			//`resolveResponse`'s own lock already guarantees `onResponse` fires
-			//at most once, so this closure runs at most once too — a second
-			//guard around it would be a plain `var` mutated from a
-			//non-isolated closure, exactly the unsafe shape that lock exists
-			//to avoid.
-			return try await withCheckedThrowingContinuation { responseContinuation in
-				let delegate = StreamingResponseDelegate(
-					onResponse: { result in
-						switch result {
-						case .success(let response):
-							responseContinuation.resume(
-								returning: (response, bodyStream))
-						case .failure(let error):
-							responseContinuation.resume(throwing: error)
-						}
-					},
-					onBytesReceived: { bodyContinuation.yield($0) },
-					onComplete: { error in
-						if let error {
-							bodyContinuation.finish(throwing: error)
-						} else {
-							bodyContinuation.finish()
-						}
+			let delegate = StreamingResponseDelegate(
+				onBytesReceived: { bodyContinuation.yield($0) },
+				onComplete: { error in
+					if let error {
+						bodyContinuation.finish(throwing: error)
+					} else {
+						bodyContinuation.finish()
 					}
-				)
-				let session = URLSession(
-					configuration: configuration, delegate: delegate,
-					delegateQueue: nil)
-				let task = session.dataTask(with: urlRequest)
-				task.resume()
+				}
+			)
+			let session = URLSession(
+				configuration: configuration, delegate: delegate, delegateQueue: nil
+			)
+			let task = session.dataTask(with: urlRequest)
+			//A session retains its delegate until invalidated.
+			session.finishTasksAndInvalidate()
+
+			//Only on cancellation - installed before `waitForResponse` so a
+			//normal `finish()` isn't later reported as `.cancelled` when the
+			//stream is simply dropped.
+			bodyContinuation.onTermination = { termination in
+				if case .cancelled = termination {
+					task.cancel()
+				}
 			}
+
+			let response = try await delegate.waitForResponse(task: task)
+			return (response, bodyStream)
 		}
 	}
 #endif

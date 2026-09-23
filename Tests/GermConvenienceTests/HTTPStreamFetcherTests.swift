@@ -12,9 +12,8 @@
 //  implementation specifically, and whether `URLProtocol` interception via
 //  `protocolClasses` behaves identically on corelibs Foundation is not
 //  something this file can claim without evidence. The Linux/Android
-//  delegate path is a genuinely different implementation and needs its own
-//  off-Apple verification, not this test compiled somewhere it was never
-//  designed to prove anything.
+//  delegate path is a genuinely different implementation, covered instead by
+//  StreamingDataLoopbackTests.swift.
 //
 
 #if canImport(Darwin)
