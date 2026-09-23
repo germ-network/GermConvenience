@@ -129,6 +129,17 @@ final class ManualRedirect: NSObject, URLSessionTaskDelegate {
 					delegateQueue: nil)
 
 				let task = session.dataTask(with: urlRequest)
+				//A session retains its delegate until invalidated.
+				session.finishTasksAndInvalidate()
+
+				//Dropping the stream, as firstLine does after one chunk, ends
+				//it as .cancelled - that's what stops the rest of the download.
+				continuation.onTermination = { termination in
+					if case .cancelled = termination {
+						task.cancel()
+					}
+				}
+
 				task.resume()
 			}
 		}

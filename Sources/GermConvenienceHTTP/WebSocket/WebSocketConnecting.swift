@@ -72,9 +72,12 @@ public enum WebSocketConnectError: Error, Sendable {
 /// delegate.
 public struct URLSessionWebSocketConnecting: WebSocketConnecting {
 	private let session: URLSession
+	private let handshakeTimeout: TimeInterval
 
-	public init(session: URLSession = .shared) {
+	/// `handshakeTimeout` sets the upgrade request's `timeoutInterval`.
+	public init(session: URLSession = .shared, handshakeTimeout: TimeInterval = 15) {
 		self.session = session
+		self.handshakeTimeout = handshakeTimeout
 	}
 
 	public func connect(_ request: BundledHTTPRequest) async throws
@@ -83,7 +86,7 @@ public struct URLSessionWebSocketConnecting: WebSocketConnecting {
 		try Task.checkCancellation()
 
 		var urlRequest = try URLRequest(httpRequest: request.request).tryUnwrap
-		urlRequest.timeoutInterval = 15
+		urlRequest.timeoutInterval = handshakeTimeout
 
 		let handshake = HandshakeDelegate()
 		let task = try await handshake.waitForOpen {
@@ -152,7 +155,7 @@ private final class HandshakeDelegate: NSObject, URLSessionWebSocketDelegate,
 			}
 			// A handshake that already resolved keeps its connection. On
 			// corelibs this cancel doesn't stop an in-flight transfer: it
-			// runs to the 15s timeout, or gets a close frame if a 101 arrives.
+			// runs to the handshake timeout, or gets a close frame if a 101 arrives.
 			guard let pending else { return }
 			pending.resume(throwing: CancellationError())
 			lock.withLock { task }?.cancel(with: .goingAway, reason: nil)
