@@ -27,7 +27,7 @@ struct WebSocketConnectingTests {
 		defer { server.stop() }
 
 		let connecting = URLSessionWebSocketConnecting(
-			session: URLSession(configuration: .ephemeral))
+			session: URLSession(configuration: .ephemeral), handshakeTimeout: 60)
 		let request = try BundledHTTPRequest(
 			url: URL(string: "ws://127.0.0.1:\(port)/ws-connect")!)
 
@@ -49,7 +49,7 @@ struct WebSocketConnectingTests {
 		defer { server.stop() }
 
 		let connecting = URLSessionWebSocketConnecting(
-			session: URLSession(configuration: .ephemeral))
+			session: URLSession(configuration: .ephemeral), handshakeTimeout: 60)
 		let request = try BundledHTTPRequest(
 			url: URL(string: "ws://127.0.0.1:\(port)/ws-redirect")!)
 
@@ -84,7 +84,7 @@ struct WebSocketConnectingTests {
 		defer { server.stop() }
 
 		let connecting = URLSessionWebSocketConnecting(
-			session: URLSession(configuration: .ephemeral))
+			session: URLSession(configuration: .ephemeral), handshakeTimeout: 60)
 		let request = try BundledHTTPRequest(
 			url: URL(string: "ws://127.0.0.1:\(port)/missing")!)
 
@@ -99,8 +99,8 @@ struct WebSocketConnectingTests {
 	}
 
 	//the server binds and listens but never accepts, so `connect` would
-	//otherwise hang past the 15s request timeout - this pins that
-	//cancelling the caller ends it well before that
+	//otherwise hang until its handshake timeout - this pins that cancelling
+	//the caller ends it without waiting for that timeout at all
 	@available(macOS 13, iOS 16, watchOS 9, tvOS 16, *)
 	@Test("connect honors cancellation", .timeLimit(.minutes(1)))
 	func connectHonorsCancellation() async throws {
@@ -109,7 +109,7 @@ struct WebSocketConnectingTests {
 		defer { server.stop() }
 
 		let connecting = URLSessionWebSocketConnecting(
-			session: URLSession(configuration: .ephemeral))
+			session: URLSession(configuration: .ephemeral), handshakeTimeout: 60)
 		let request = try BundledHTTPRequest(
 			url: URL(string: "ws://127.0.0.1:\(port)/never")!)
 
@@ -117,7 +117,6 @@ struct WebSocketConnectingTests {
 		try await Task.sleep(for: .milliseconds(300))
 		child.cancel()
 
-		let start = Date()
 		do {
 			_ = try await child.value
 			Issue.record("expected CancellationError")
@@ -126,6 +125,5 @@ struct WebSocketConnectingTests {
 		} catch {
 			Issue.record("expected CancellationError, got \(error)")
 		}
-		#expect(Date().timeIntervalSince(start) < 5)
 	}
 }

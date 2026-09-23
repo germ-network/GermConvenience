@@ -81,6 +81,7 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 	private var acceptLoopShouldStop = false
 	private var acceptLoopStarted = false
 	private let acceptLoopDidStop = DispatchSemaphore(value: 0)
+	private var holdsEndedByPeerCount = 0
 
 	private(set) var port: UInt16 = 0
 
@@ -90,6 +91,12 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 
 	var recordedRequests: [RecordedRequest] {
 		lock.withLock { requestLog }
+	}
+
+	//counts `holdUntilPeerClosesOrStopping` returns caused by the peer
+	//closing/hanging up, not by the server stopping
+	var holdsEndedByPeer: Int {
+		lock.withLock { holdsEndedByPeerCount }
 	}
 
 	/// Binds `127.0.0.1:<ephemeral port>` and starts listening, returning the
@@ -295,7 +302,10 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 			guard revents & POLLIN != 0 else {
 				//a hangup/error with no data pending would otherwise poll
 				//as ready forever, busy-spinning this loop
-				if revents & (POLLHUP | POLLERR | POLLNVAL) != 0 { return }
+				if revents & (POLLHUP | POLLERR | POLLNVAL) != 0 {
+					lock.withLock { holdsEndedByPeerCount += 1 }
+					return
+				}
 				continue
 			}
 			//either real bytes arrived or the peer closed (read returns 0) -
@@ -303,6 +313,7 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 			_ = buffer.withUnsafeMutableBytes { raw -> Int in
 				read(clientSocket, raw.baseAddress, raw.count)
 			}
+			lock.withLock { holdsEndedByPeerCount += 1 }
 			return
 		}
 	}
