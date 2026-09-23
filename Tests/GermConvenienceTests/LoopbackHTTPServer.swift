@@ -25,7 +25,7 @@ import Foundation
 #endif
 
 /// Serves a fixed table of canned responses over real loopback sockets, and
-/// records the request path of every connection it accepts.
+/// records the method, path, and body of every connection it accepts.
 final class LoopbackHTTPServer: @unchecked Sendable {
 	struct Response: Sendable {
 		var status: Int
@@ -47,12 +47,12 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 			status: 404, reason: "Not Found", headers: [:], body: Data())
 	}
 
-	/// A route either serves a fixed canned `Response`, or upgrades to a
-	/// WebSocket — the latter can't be a canned `Response` since
-	/// `Sec-WebSocket-Accept` is computed per-request from the client's key.
+	/// A route serves a fixed canned `Response`, upgrades to a WebSocket, or
+	/// sends a head and part of a body and then holds.
 	enum RouteHandler: Sendable {
 		case response(Response)
 		case webSocketUpgrade
+		case partialBodyHold(status: Int, reason: String, contentLength: Int, chunk: Data)
 
 		static func ok(body: String) -> RouteHandler { .response(.ok(body: body)) }
 		static func found(location: String, body: String = "redirecting") -> RouteHandler {
@@ -68,9 +68,15 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 		case getsocknameFailed(Int32)
 	}
 
+	struct RecordedRequest: Sendable {
+		var method: String
+		var path: String
+		var body: Data
+	}
+
 	private let lock = NSLock()
 	private var routes: [String: RouteHandler] = [:]
-	private var recordedRequestPaths: [String] = []
+	private var requestLog: [RecordedRequest] = []
 	private var listeningSocket: Int32 = -1
 	private var acceptLoopShouldStop = false
 	private var acceptLoopStarted = false
@@ -79,7 +85,11 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 	private(set) var port: UInt16 = 0
 
 	var recordedPaths: [String] {
-		lock.withLock { recordedRequestPaths }
+		lock.withLock { requestLog.map(\.path) }
+	}
+
+	var recordedRequests: [RecordedRequest] {
+		lock.withLock { requestLog }
 	}
 
 	/// Binds `127.0.0.1:<ephemeral port>` and starts listening, returning the
@@ -211,18 +221,32 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 			clientSocket, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeout,
 			socklen_t(MemoryLayout<timeval>.size))
 
-		guard let requestText = readRequestText(from: clientSocket),
-			let path = requestPath(fromRequestText: requestText)
-		else {
+		guard let parsed = readRequest(from: clientSocket) else {
 			close(clientSocket)
 			return
 		}
-		lock.withLock { recordedRequestPaths.append(path) }
+		lock.withLock {
+			requestLog.append(
+				RecordedRequest(
+					method: parsed.method, path: parsed.path, body: parsed.body)
+			)
+		}
 
-		let handler = lock.withLock { routes[path] } ?? .notFound
+		let handler = lock.withLock { routes[parsed.path] } ?? .notFound
 		switch handler {
 		case .webSocketUpgrade:
-			handleWebSocketUpgrade(clientSocket: clientSocket, requestText: requestText)
+			handleWebSocketUpgrade(clientSocket: clientSocket, headers: parsed.headers)
+		case .partialBodyHold(let status, let reason, let contentLength, let chunk):
+			defer { close(clientSocket) }
+			var head = "HTTP/1.1 \(status) \(reason)\r\n"
+			head += "Content-Length: \(contentLength)\r\n"
+			//without these, Darwin's content sniffing holds the response
+			//back until ~512 body bytes arrive
+			head += "Content-Type: application/octet-stream\r\n"
+			head += "X-Content-Type-Options: nosniff\r\n"
+			head += "\r\n"
+			sendAll(clientSocket, Array(head.utf8) + Array(chunk))
+			holdUntilPeerClosesOrStopping(clientSocket: clientSocket)
 		case .response(let response):
 			defer { close(clientSocket) }
 			sendAll(clientSocket, encode(response))
@@ -230,17 +254,12 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 	}
 
 	/// Replies `101 Switching Protocols`, sends one unmasked text frame
-	/// ("hello"), then holds the TCP connection open until either the peer
-	/// sends anything (typically a close frame — corelibs' `close()` only
-	/// ever sends one, it never closes the TCP connection itself) or the
-	/// server itself is stopping. Connections are handled on the accept
-	/// thread, so this has to poll rather than block in a single `read()`,
-	/// or `stop()` would deadlock waiting for this to return.
-	private func handleWebSocketUpgrade(clientSocket: Int32, requestText: String) {
+	/// ("hello"), then holds the connection open the same way
+	/// `partialBodyHold` routes do.
+	private func handleWebSocketUpgrade(clientSocket: Int32, headers: [String: String]) {
 		defer { close(clientSocket) }
 
-		guard let key = parseHeaders(fromRequestText: requestText)["sec-websocket-key"]
-		else {
+		guard let key = headers["sec-websocket-key"] else {
 			sendAll(clientSocket, encode(.notFound))
 			return
 		}
@@ -257,6 +276,16 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 		let payload = Array("hello".utf8)
 		sendAll(clientSocket, [0x81, UInt8(payload.count)] + payload)
 
+		holdUntilPeerClosesOrStopping(clientSocket: clientSocket)
+	}
+
+	/// Holds a connection open until either the peer sends anything
+	/// (typically a close, or corelibs' WS `close()`, which only ever sends
+	/// a close frame and never closes the TCP connection itself) or the
+	/// server itself is stopping. Connections are handled on the accept
+	/// thread, so this has to poll rather than block in a single `read()`,
+	/// or `stop()` would deadlock waiting for this to return.
+	private func holdUntilPeerClosesOrStopping(clientSocket: Int32) {
 		var buffer = [UInt8](repeating: 0, count: 256)
 		while true {
 			if lock.withLock({ acceptLoopShouldStop }) { return }
@@ -284,34 +313,80 @@ final class LoopbackHTTPServer: @unchecked Sendable {
 		return Data(digest).base64EncodedString()
 	}
 
-	private func readRequestText(from fd: Int32) -> String? {
-		var data = Data()
-		let capacity = 64 * 1024
-		var buffer = [UInt8](repeating: 0, count: 4096)
+	private struct ParsedRequest {
+		var method: String
+		var path: String
+		var headers: [String: String]
+		var body: Data
+	}
 
-		while data.count < capacity {
-			let bytesRead = buffer.withUnsafeMutableBytes { raw -> Int in
+	/// Reads raw bytes until the header/body boundary, decoding only the
+	/// header block as UTF-8 - a binary body would otherwise fail to decode
+	/// along with everything before it. `Content-Length` bytes beyond
+	/// what's already buffered are read separately; a missing header means
+	/// no body, not "read until timeout" (GET and the WS upgrade have none).
+	private func readRequest(from fd: Int32) -> ParsedRequest? {
+		var buffer: [UInt8] = []
+		let headerCapacity = 64 * 1024
+		var chunk = [UInt8](repeating: 0, count: 4096)
+
+		var headerEnd: Int?
+		while buffer.count < headerCapacity {
+			let bytesRead = chunk.withUnsafeMutableBytes { raw -> Int in
 				read(fd, raw.baseAddress, raw.count)
 			}
 			guard bytesRead > 0 else { break }
-			data.append(contentsOf: buffer[0..<bytesRead])
-			if let text = String(data: data, encoding: .utf8), text.contains("\r\n\r\n")
-			{
-				return text
+			buffer.append(contentsOf: chunk[0..<bytesRead])
+			if let end = Self.headerTerminatorEnd(in: buffer) {
+				headerEnd = end
+				break
 			}
 		}
-		return String(data: data, encoding: .utf8)
-	}
+		guard let headerEnd,
+			let headerText = String(bytes: buffer[..<headerEnd], encoding: .utf8)
+		else { return nil }
 
-	private func requestPath(fromRequestText text: String) -> String? {
 		guard
-			let requestLine = text.split(
+			let requestLine = headerText.split(
 				separator: "\r\n", maxSplits: 1, omittingEmptySubsequences: false
 			).first
 		else { return nil }
-		let tokens = requestLine.split(separator: " ")
-		guard tokens.count >= 2 else { return nil }
-		return String(tokens[1])
+		let requestLineTokens = requestLine.split(separator: " ")
+		guard requestLineTokens.count >= 2 else { return nil }
+
+		let headers = parseHeaders(fromRequestText: headerText)
+		let contentLength = headers["content-length"].flatMap { Int($0) } ?? 0
+
+		var body = Array(buffer[headerEnd...])
+		while body.count < contentLength {
+			let toRead = min(contentLength - body.count, chunk.count)
+			let bytesRead = chunk.withUnsafeMutableBytes { raw -> Int in
+				read(fd, raw.baseAddress, toRead)
+			}
+			guard bytesRead > 0 else { break }
+			body.append(contentsOf: chunk[0..<bytesRead])
+		}
+		if body.count > contentLength {
+			body = Array(body[0..<contentLength])
+		}
+
+		return ParsedRequest(
+			method: String(requestLineTokens[0]),
+			path: String(requestLineTokens[1]),
+			headers: headers,
+			body: Data(body))
+	}
+
+	private static func headerTerminatorEnd(in bytes: [UInt8]) -> Int? {
+		guard bytes.count >= 4 else { return nil }
+		for i in 0...(bytes.count - 4) {
+			if bytes[i] == 0x0D, bytes[i + 1] == 0x0A, bytes[i + 2] == 0x0D,
+				bytes[i + 3] == 0x0A
+			{
+				return i + 4
+			}
+		}
+		return nil
 	}
 
 	private func parseHeaders(fromRequestText text: String) -> [String: String] {
