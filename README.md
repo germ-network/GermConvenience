@@ -15,7 +15,7 @@ shared helper implementations:
 * copy bytes from Contiguous bytes (primarily used to get random bytes for use as an identifier or mock data)
 
 Additional, separately-imported products, each isolating its own extra dependency so the base target stays dependency-free:
-* `GermConvenienceUtilities` (no extra dependency): typed JSON decode-error wrapping, `Encodable`/`Data` coding helpers, `expectOne`/`expectOneOrLess` collection helpers, a short `Data` debug-preview string, and `DeleteFuse`, a guard that fails further work once a delete has begun
+* `GermConvenienceUtilities` (no extra dependency): `expectOne`/`expectOneOrLess` collection helpers, a short `Data` debug-preview string, and `DeleteFuse`, a guard that fails further work once a delete has begun
 * `GermConvenienceCrypto` (swift-crypto): byte/`Data` accessors on `Digest`
 * `GermConvenienceLogging` (swift-log): `Logger.logError`, which carries the error structurally rather than flattening it into the message
 
