@@ -38,9 +38,12 @@ let package = Package(
 		),
 		// Foundation-only helpers (typed JSON decode errors, `expectOne`, a
 		// delete-in-progress guard). Their own product rather than part of the
-		// base target, so upgrading GermConvenience never introduces these names
-		// into a module that didn't ask for them — a consumer opts in by
-		// importing GermConvenienceUtilities.
+		// base target, so upgrading GermConvenience alone never introduces these
+		// names into a module that didn't ask for them — a consumer opts in by
+		// importing GermConvenienceUtilities. (An intermediate library that
+		// itself publicly imports this product can still leak these extension
+		// members to ITS importers, absent MemberImportVisibility — a caveat
+		// for consumers of this package, not for this package itself.)
 		.library(
 			name: "GermConvenienceUtilities",
 			targets: ["GermConvenienceUtilities"]
