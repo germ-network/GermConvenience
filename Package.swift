@@ -36,10 +36,34 @@ let package = Package(
 			name: "GermCBOR",
 			targets: ["GermCBOR"]
 		),
+		// Foundation-only helpers (typed JSON decode errors, `expectOne`, a
+		// delete-in-progress guard). Their own product rather than part of the
+		// base target, so upgrading GermConvenience never introduces these names
+		// into a module that didn't ask for them — a consumer opts in by
+		// importing GermConvenienceUtilities.
+		.library(
+			name: "GermConvenienceUtilities",
+			targets: ["GermConvenienceUtilities"]
+		),
+		// swift-crypto `Digest` byte accessors — split out, like GermHTTPSignature,
+		// so swift-crypto stays off every target that doesn't need it.
+		.library(
+			name: "GermConvenienceCrypto",
+			targets: ["GermConvenienceCrypto"]
+		),
+		// `Logger.logError` — its own product so swift-log is linked only by a
+		// consumer that imports GermConvenienceLogging.
+		.library(
+			name: "GermConvenienceLogging",
+			targets: ["GermConvenienceLogging"]
+		),
 	],
 	dependencies: [
 		.package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
 		.package(url: "https://github.com/apple/swift-crypto.git", from: "5.0.0"),
+		// 1.12.0 is the first release whose log methods take `error:`, which
+		// logError forwards; 1.11.0 added LogEvent.
+		.package(url: "https://github.com/apple/swift-log", from: "1.12.0"),
 	],
 	targets: [
 		// Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -71,6 +95,21 @@ let package = Package(
 		.target(
 			name: "GermCBOR"
 		),
+		.target(
+			name: "GermConvenienceUtilities"
+		),
+		.target(
+			name: "GermConvenienceCrypto",
+			dependencies: [
+				.product(name: "Crypto", package: "swift-crypto")
+			]
+		),
+		.target(
+			name: "GermConvenienceLogging",
+			dependencies: [
+				.product(name: "Logging", package: "swift-log")
+			]
+		),
 		.testTarget(
 			name: "GermConvenienceTests",
 			dependencies: [
@@ -88,6 +127,24 @@ let package = Package(
 		.testTarget(
 			name: "GermCBORTests",
 			dependencies: ["GermCBOR"]
+		),
+		.testTarget(
+			name: "GermConvenienceUtilitiesTests",
+			dependencies: ["GermConvenienceUtilities"]
+		),
+		.testTarget(
+			name: "GermConvenienceCryptoTests",
+			dependencies: [
+				"GermConvenienceCrypto",
+				.product(name: "Crypto", package: "swift-crypto"),
+			]
+		),
+		.testTarget(
+			name: "GermConvenienceLoggingTests",
+			dependencies: [
+				"GermConvenienceLogging",
+				.product(name: "Logging", package: "swift-log"),
+			]
 		),
 	]
 )
