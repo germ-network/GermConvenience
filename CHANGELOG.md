@@ -1,5 +1,21 @@
 # @germ-network/germ-convenience
 
+## 0.12.0
+
+### Minor Changes
+
+- [#61](https://github.com/germ-network/GermConvenience/pull/61) [`672a020`](https://github.com/germ-network/GermConvenience/commit/672a020e427f0fadb63fbd329a29bf4c53571029) Thanks [@germ-mark](https://github.com/germ-mark)! - Fix two issues in `GermConvenienceHTTP`.
+
+  Off Apple, `firstLine(request:)` created a `URLSession` per call and never invalidated it, leaking the session and its delegate, and never cancelled the underlying data task once the caller stopped reading — so a caller that only wanted the first line still downloaded the whole body. Now invalidates the session right after creating the task, and cancels the task if the stream is dropped before it finishes on its own.
+
+  `URLSessionWebSocketConnecting.connect` hard-coded a 15-second handshake timeout. `init` now takes a defaulted `handshakeTimeout: TimeInterval` (default 15, matching prior behavior) so a caller — most usefully a test — can widen it.
+
+- [#63](https://github.com/germ-network/GermConvenience/pull/63) [`0adb233`](https://github.com/germ-network/GermConvenience/commit/0adb233af9df2ae118f37e1447f8e82112fa5873) Thanks [@germ-mark](https://github.com/germ-mark)! - Add three opt-in library products of general-purpose helpers. None is part of the base `GermConvenience` product, so an existing consumer's own build is unaffected until it adds and imports one — though resolving this release does add a new `swift-log` package dependency (`from: "1.12.0"`) to every consumer's resolved graph, because SwiftPM resolves every package dependency a manifest declares, even ones only used by products the consumer doesn't import. This is lockfile churn, not a break, for every known consumer of this package — but a consumer that caps its own `swift-log` requirement below 1.12.0 will fail to resolve this release.
+
+  - `GermConvenienceUtilities` (no extra dependency): `Array.expectOne()` / `expectOneOrLess()`; `Data.debugPrefix`; and `DeleteFuse`, a guard that fails further work with `DeletionError.alreadyDeleting` once a delete has begun. (Does not include `Encodable.encoded`/`Data.decoded()` — the JSON round-trip pair, unlike these, is dropped rather than carried over: `decoded()`'s generic return type is inferred purely from calling context, a real type-inference footgun in practice, and JSON itself isn't the intended long-term wire/storage format here.)
+  - `GermConvenienceCrypto` (swift-crypto): `Digest.bytes` / `Digest.data`.
+  - `GermConvenienceLogging` (swift-log, `from: "1.12.0"`, linked only by this product): `Logger.logError(_:context:)`, which passes the error to the handler structurally (`LogEvent.error`) rather than flattening it into the message, and attributes the line to the caller.
+
 ## 0.11.0
 
 ### Minor Changes
