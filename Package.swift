@@ -12,11 +12,22 @@ let package = Package(
 			name: "GermConvenience",
 			targets: ["GermConvenience"]
 		),
-		// The HTTPTypes/URLSession helpers, split out so the base GermConvenience
-		// (tryUnwrap, form encoding, etc.) carries no swift-http-types dependency.
+		// The HTTPTypes-based fetcher/WebSocket protocols and request/response
+		// types, split out so the base GermConvenience (tryUnwrap, form encoding,
+		// etc.) carries no swift-http-types dependency. Nothing here imports
+		// URLSession or FoundationNetworking, so it is safe to depend on from
+		// platforms that supply their own transport.
 		.library(
 			name: "GermConvenienceHTTP",
 			targets: ["GermConvenienceHTTP"]
+		),
+		// The URLSession conformers (`URLSession: HTTPFetcher/HTTPStreamFetcher`,
+		// `manualRedirect()`, `firstLine`, `URLSessionWebSocketConnecting`). Its own
+		// product so a consumer that must not link URLSession (FoundationNetworking
+		// off Apple) simply never depends on it.
+		.library(
+			name: "GermConvenienceURLSession",
+			targets: ["GermConvenienceURLSession"]
 		),
 		.library(
 			name: "GermConvenienceMocks",
@@ -62,7 +73,10 @@ let package = Package(
 		),
 	],
 	dependencies: [
-		.package(url: "https://github.com/apple/swift-http-types.git", from: "1.0.0"),
+		// 1.5.0 moved `HTTPRequest.url` and `HTTPRequest(method:url:headerFields:)`
+		// from HTTPTypesFoundation into HTTPTypes, which is what lets
+		// GermConvenienceHTTP drop HTTPTypesFoundation.
+		.package(url: "https://github.com/apple/swift-http-types.git", from: "1.5.0"),
 		.package(url: "https://github.com/apple/swift-crypto.git", from: "5.0.0"),
 		// 1.12.0 is the first release whose log methods take `error:`, which
 		// logError forwards; 1.11.0 added LogEvent.
@@ -78,6 +92,14 @@ let package = Package(
 			name: "GermConvenienceHTTP",
 			dependencies: [
 				"GermConvenience",
+				.product(name: "HTTPTypes", package: "swift-http-types"),
+			]
+		),
+		.target(
+			name: "GermConvenienceURLSession",
+			dependencies: [
+				"GermConvenience",
+				"GermConvenienceHTTP",
 				.product(name: "HTTPTypes", package: "swift-http-types"),
 				.product(name: "HTTPTypesFoundation", package: "swift-http-types"),
 			]
@@ -117,7 +139,15 @@ let package = Package(
 			name: "GermConvenienceTests",
 			dependencies: [
 				"GermConvenience", "GermConvenienceMocks", "GermConvenienceHTTP",
+				.product(name: "HTTPTypes", package: "swift-http-types"),
+			]
+		),
+		.testTarget(
+			name: "GermConvenienceURLSessionTests",
+			dependencies: [
+				"GermConvenience", "GermConvenienceHTTP", "GermConvenienceURLSession",
 				.product(name: "Crypto", package: "swift-crypto"),
+				.product(name: "HTTPTypes", package: "swift-http-types"),
 			]
 		),
 		.testTarget(

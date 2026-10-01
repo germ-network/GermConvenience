@@ -7,6 +7,7 @@
 
 import Foundation
 import GermConvenienceHTTP
+import GermConvenienceURLSession
 import HTTPTypes
 import Testing
 

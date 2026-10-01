@@ -1,10 +1,6 @@
 import Foundation
 import HTTPTypes
 
-#if canImport(FoundationNetworking)
-	import FoundationNetworking
-#endif
-
 /// Wraps a fetcher to retry idempotent (GET/HEAD) requests around 429 rate
 /// limiting, transient network errors, and 5xx responses. Every other method
 /// bypasses this decorator entirely, and every other status passes through

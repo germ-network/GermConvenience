@@ -5,10 +5,6 @@ import Testing
 
 @testable import GermConvenienceHTTP
 
-#if canImport(FoundationNetworking)
-	import FoundationNetworking
-#endif
-
 /// Records every delay the fetcher asks it to wait, without ever really
 /// sleeping.
 @available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *)

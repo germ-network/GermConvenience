@@ -3,12 +3,7 @@ import GermConvenience
 import GermConvenienceHTTP
 import GermConvenienceMocks
 import HTTPTypes
-import HTTPTypesFoundation
 import Testing
-
-#if canImport(FoundationNetworking)
-	import FoundationNetworking
-#endif
 
 @Suite("MockHTTPFetcher") struct TestMockHTTPFetcher {
 	let tokenUrl = URL(string: "https://as.example/oauth/token")!

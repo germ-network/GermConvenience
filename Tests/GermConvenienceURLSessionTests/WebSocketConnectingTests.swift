@@ -8,6 +8,7 @@
 
 import Foundation
 import GermConvenienceHTTP
+import GermConvenienceURLSession
 import Testing
 
 #if canImport(FoundationNetworking)
