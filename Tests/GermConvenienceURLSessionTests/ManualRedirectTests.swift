@@ -65,3 +65,26 @@ struct ManualRedirectTests {
 		#expect(server.recordedPaths.contains("/target"))
 	}
 }
+
+@Suite("ManualRedirectFetcher")
+struct ManualRedirectFetcherTests {
+	@available(macOS 13, iOS 16, watchOS 9, tvOS 16, *)
+	@Test("refuses to follow a redirect", .timeLimit(.minutes(1)))
+	func refusesRedirect() async throws {
+		let server = LoopbackHTTPServer()
+		let port = try server.bindSocket()
+		server.startAccepting(routes: [
+			"/redirect": .found(location: "http://127.0.0.1:\(port)/target"),
+			"/target": .ok(body: "target"),
+		])
+		defer { server.stop() }
+
+		let fetcher: any RedirectRefusingHTTPFetcher = ManualRedirectFetcher()
+		let request = try BundledHTTPRequest(
+			url: URL(string: "http://127.0.0.1:\(port)/redirect")!)
+		let response = try await fetcher.data(for: request)
+
+		#expect(response.response.status.code == 302)
+		#expect(server.recordedPaths == ["/redirect"])
+	}
+}

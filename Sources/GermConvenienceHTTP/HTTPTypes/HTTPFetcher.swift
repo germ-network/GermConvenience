@@ -14,3 +14,12 @@ import Foundation
 public protocol HTTPFetcher: Sendable {
 	func data(for: BundledHTTPRequest) async throws -> HTTPDataResponse
 }
+
+///An `HTTPFetcher` that never follows a redirect: a 3xx answer is returned as the
+///response (status and headers) rather than being fetched through.
+///
+///This is a semantic promise the compiler cannot check, so conformance is opt-in.
+///Require it where a followed redirect would bypass validation that ran once,
+///before the request, such as host screening of attacker-influenced input or
+///authorization metadata fetches. A plain `HTTPFetcher` does not satisfy it.
+public protocol RedirectRefusingHTTPFetcher: HTTPFetcher {}
