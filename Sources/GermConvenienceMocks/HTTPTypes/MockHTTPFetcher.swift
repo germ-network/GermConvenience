@@ -28,7 +28,8 @@ public enum MethodMatcher: Hashable, Sendable {
 	public static let delete: Self = .method(.delete)
 }
 
-public actor MockHTTPFetcher: HTTPFetcher {
+///Returns only what was registered, so it never follows a redirect.
+public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 	public enum Errors: Equatable, Error {
 		case tooManyRequests
 		case notRequested

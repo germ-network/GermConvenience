@@ -32,6 +32,21 @@ extension URLSession {
 	}
 }
 
+///A `URLSession` fetcher that refuses redirects, backed by `URLSession.manualRedirect()`.
+///The type, rather than the session, is what carries the guarantee: any `URLSession`
+///is an `HTTPFetcher`, but only this satisfies `RedirectRefusingHTTPFetcher`.
+public struct ManualRedirectFetcher: RedirectRefusingHTTPFetcher {
+	private let session: URLSession
+
+	public init() {
+		session = .manualRedirect()
+	}
+
+	public func data(for request: BundledHTTPRequest) async throws -> HTTPDataResponse {
+		try await session.data(for: request)
+	}
+}
+
 ///The default (shared) urlsession does follow redirects, which is permitted for resource requests
 extension URLSession: HTTPFetcher {
 	public func data(
