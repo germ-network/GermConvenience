@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.14.0
+
+### Minor Changes
+
+- [#66](https://github.com/germ-network/GermConvenience/pull/66) [`d9997fc`](https://github.com/germ-network/GermConvenience/commit/d9997fcb1fc402ebd56592bd0bb9a4492b4694bf) Thanks [@germ-mark](https://github.com/germ-mark)! - Add `RedirectRefusingHTTPFetcher`, an `HTTPFetcher` refinement for fetchers that return a 3xx as the response instead of following it, so a caller that depends on that can require it in its signature. `GermConvenienceURLSession` adds `ManualRedirectFetcher`, a conformer backed by `URLSession.manualRedirect()`, and `MockHTTPFetcher` conforms. `URLSession.manualRedirect()` is unchanged.
+
 ## 0.13.0
 
 ### Minor Changes
