@@ -6,7 +6,7 @@
 
 In support of the [AtprotoOauth](https://github.com/germ-network/AtprotoOAuth) family of modular packages,
 shared helper implementations:
-* an HTTPDataResponse type for the return value of `URLSession.data(for:)`
+* an HTTPDataResponse type for the return value of an HTTP fetch
 	* functional affordances for checking the success codes and decoding result and error types
 	* HTTPFetcher, an abstraction of `URLSession.data(for)` to allow mocking of requests for test
 * typed HTTP Method and URL shemes
@@ -15,6 +15,7 @@ shared helper implementations:
 * copy bytes from Contiguous bytes (primarily used to get random bytes for use as an identifier or mock data)
 
 Additional, separately-imported products, each isolating its own extra dependency so the base target stays dependency-free:
+* `GermConvenienceURLSession` (swift-http-types' `HTTPTypesFoundation`): the `URLSession` conformers to `HTTPFetcher`/`HTTPStreamFetcher`, `URLSession.manualRedirect()`, `firstLine(request:)` and `URLSessionWebSocketConnecting`. `GermConvenienceHTTP` itself never references `URLSession` or imports FoundationNetworking, so a platform that supplies its own transport depends only on that and never links FoundationNetworking
 * `GermConvenienceUtilities` (no extra dependency): `expectOne`/`expectOneOrLess` collection helpers, a short `Data` debug-preview string, and `DeleteFuse`, a guard that fails further work once a delete has begun
 * `GermConvenienceCrypto` (swift-crypto): byte/`Data` accessors on `Digest`
 * `GermConvenienceLogging` (swift-log): `Logger.logError`, which carries the error structurally rather than flattening it into the message
