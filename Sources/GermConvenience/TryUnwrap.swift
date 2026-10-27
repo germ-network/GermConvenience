@@ -12,16 +12,28 @@ enum UnwrapError: Error, Equatable {
 }
 
 extension Optional {
-	public var tryUnwrap: Wrapped {
+	/// The wrapped value, or a `UnwrapError.missing` error when `nil`.
+	public var unwrapped: Wrapped {
 		get throws {
-			try tryUnwrap(UnwrapError.missing("\(Wrapped.self)"))
+			try unwrap(or: UnwrapError.missing("\(Wrapped.self)"))
 		}
 	}
 
-	public func tryUnwrap<E: Error>(_ throwing: E) throws(E) -> Wrapped {
+	/// Returns the wrapped value, or throws `error` when `nil`.
+	public func unwrap<E: Error>(or error: E) throws(E) -> Wrapped {
 		guard let self else {
-			throw throwing
+			throw error
 		}
 		return self
+	}
+
+	@available(*, deprecated, renamed: "unwrapped")
+	public var tryUnwrap: Wrapped {
+		get throws { try unwrapped }
+	}
+
+	@available(*, deprecated, renamed: "unwrap(or:)")
+	public func tryUnwrap<E: Error>(_ error: E) throws(E) -> Wrapped {
+		try unwrap(or: error)
 	}
 }

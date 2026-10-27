@@ -53,7 +53,7 @@ public struct URLSessionWebSocketConnecting: WebSocketConnecting {
 	{
 		try Task.checkCancellation()
 
-		var urlRequest = try URLRequest(httpRequest: request.request).tryUnwrap
+		var urlRequest = try URLRequest(httpRequest: request.request).unwrapped
 		urlRequest.timeoutInterval = handshakeTimeout
 
 		let handshake = HandshakeDelegate()

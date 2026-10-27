@@ -17,10 +17,16 @@ public class DeleteFuse {
 		deleting = true
 	}
 
-	public func test() throws {
+	/// Throws `DeletionError.alreadyDeleting` when deletion has already begun.
+	public func checkNotDeleting() throws {
 		guard !deleting else {
 			throw DeletionError.alreadyDeleting
 		}
+	}
+
+	@available(*, deprecated, renamed: "checkNotDeleting()")
+	public func test() throws {
+		try checkNotDeleting()
 	}
 }
 
