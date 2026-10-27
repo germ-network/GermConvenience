@@ -61,17 +61,12 @@ public struct FormParameters: Sendable {
 		storage.removeValue(forKey: name)
 	}
 
-	public var entries: [[String]] {
+	public func entries() -> [[String]] {
 		storage.flatMap({ parameter -> [[String]] in
 			parameter.value.map { value -> [String] in
 				[parameter.key, value]
 			}
 		})
-	}
-
-	@available(*, deprecated, renamed: "entries")
-	public func entries() -> [[String]] {
-		entries
 	}
 
 	public var queryItems: [URLQueryItem] {
