@@ -1,5 +1,11 @@
 # @germ-network/germ-convenience
 
+## 0.15.0
+
+### Minor Changes
+
+- [#68](https://github.com/germ-network/GermConvenience/pull/68) [`d988728`](https://github.com/germ-network/GermConvenience/commit/d98872882c3dcfa5e029f94b8dd66db3a621d3e1) Thanks [@germ-mark](https://github.com/germ-mark)! - Align public API names with Swift conventions. Migrations: `HTTPContentType.formUrlEncoded` → `.formURLEncoded`; `.formEncoded` → `.makeMultipartFormDataHeader()`; `FormParameters.asQueryItems()` → `.queryItems` and `.data` → `.encodedData`; `Optional.tryUnwrap` → `.unwrapped` / `unwrap(or:)`; `LazyResource.lazyValue(isolation:)` → `.value(isolation:)`; `Array.expectOne()` / `expectOneOrLess()` → `.singleElement()` / `.singleElementIfAny()`; `HTTPResponseError.code` → `.statusCode`; `HTTPDataResponse.success(code:)` → `success(statusCode:)`; `RFC9421.SignedRequest.base` → `.signatureBase`; and `DeleteFuse.test()` → `.checkNotDeleting()`. Deprecated aliases remain for one release where practical.
+
 ## 0.14.0
 
 ### Minor Changes
