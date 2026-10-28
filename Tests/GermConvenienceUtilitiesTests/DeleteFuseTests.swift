@@ -5,14 +5,14 @@ import Testing
 @Suite struct DeleteFuseTests {
 	@Test func testPassesBeforeTrip() throws {
 		let fuse = DeleteFuse()
-		try fuse.test()
+		try fuse.checkNotDeleting()
 	}
 
 	@Test func testThrowsAfterTrip() throws {
 		let fuse = DeleteFuse()
 		fuse.trip()
 		#expect(throws: DeletionError.alreadyDeleting) {
-			try fuse.test()
+			try fuse.checkNotDeleting()
 		}
 	}
 }

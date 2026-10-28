@@ -13,7 +13,7 @@ let package = Package(
 			targets: ["GermConvenience"]
 		),
 		// The HTTPTypes-based fetcher/WebSocket protocols and request/response
-		// types, split out so the base GermConvenience (tryUnwrap, form encoding,
+		// types, split out so the base GermConvenience (optional unwrapping, form encoding,
 		// etc.) carries no swift-http-types dependency. Nothing here imports
 		// URLSession or FoundationNetworking, so it is safe to depend on from
 		// platforms that supply their own transport.
@@ -47,7 +47,7 @@ let package = Package(
 			name: "GermCBOR",
 			targets: ["GermCBOR"]
 		),
-		// Foundation-only helpers (typed JSON decode errors, `expectOne`, a
+		// Foundation-only helpers (typed JSON decode errors, `singleElement()`, a
 		// delete-in-progress guard). Their own product rather than part of the
 		// base target, so upgrading GermConvenience alone never introduces these
 		// names into a module that didn't ask for them — a consumer opts in by

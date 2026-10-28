@@ -14,20 +14,20 @@ struct TestFormParametersParsing {
 		[:],
 	]
 
-	@Test("Parsing from .data", arguments: testVectors) func testInOutData(
+	@Test("Parsing from .encodedData", arguments: testVectors) func testInOutData(
 		vector: [String: [String]]
 	) throws {
 		let form = FormParameters(vector)
-		let parsed = FormParameters(parsing: form.data)
+		let parsed = FormParameters(parsing: form.encodedData)
 
 		#expect(parsed == form)
 	}
 
-	@Test("Parsing from .asQueryItems()", arguments: testVectors) func testInOutQueryItems(
+	@Test("Parsing from .queryItems", arguments: testVectors) func testInOutQueryItems(
 		vector: [String: [String]]
 	) throws {
 		let form = FormParameters(vector)
-		let parsed = FormParameters(parsing: form.asQueryItems())
+		let parsed = FormParameters(parsing: form.queryItems)
 
 		#expect(parsed == form)
 	}

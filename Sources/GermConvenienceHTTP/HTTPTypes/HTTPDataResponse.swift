@@ -37,9 +37,9 @@ public struct HTTPDataResponse: Sendable {
 		}
 	}
 
-	public enum ErrorResult<R: Decodable, E: Decodable> {
-		case result(R)
-		case error(E, HTTPResponse.Status)
+	public enum ErrorResult<Success: Decodable, Failure: Decodable> {
+		case result(Success)
+		case error(Failure, HTTPResponse.Status)
 	}
 
 	//discards the decoding failure but preserves the status and every original byte,
@@ -52,21 +52,37 @@ public struct HTTPDataResponse: Sendable {
 		return decoded
 	}
 
-	public func success<R: Decodable, E: Decodable>(
-		code: Int,
-		decodeResult resultType: R.Type,
-		orError errorType: E.Type,
-	) throws -> ErrorResult<R, E> {
-		guard response.status.code == code else {
+	public func success<Success: Decodable, Failure: Decodable>(
+		statusCode: Int,
+		decodeResult resultType: Success.Type,
+		orError errorType: Failure.Type,
+	) throws -> ErrorResult<Success, Failure> {
+		guard response.status.code == statusCode else {
 			return .error(try decodedError(errorType), response.status)
 		}
 		return .result(try data.decode())
 	}
 
-	public func success<R: Decodable, E: Decodable>(
-		decodeResult resultType: R.Type,
-		orError errorType: E.Type,
-	) throws -> ErrorResult<R, E> {
+	@available(
+		*, deprecated,
+		renamed: "success(statusCode:decodeResult:orError:)"
+	)
+	public func success<Success: Decodable, Failure: Decodable>(
+		code: Int,
+		decodeResult resultType: Success.Type,
+		orError errorType: Failure.Type,
+	) throws -> ErrorResult<Success, Failure> {
+		try success(
+			statusCode: code,
+			decodeResult: resultType,
+			orError: errorType
+		)
+	}
+
+	public func success<Success: Decodable, Failure: Decodable>(
+		decodeResult resultType: Success.Type,
+		orError errorType: Failure.Type,
+	) throws -> ErrorResult<Success, Failure> {
 		guard response.status.kind == .successful else {
 			return .error(try decodedError(errorType), response.status)
 		}
@@ -81,9 +97,9 @@ public struct HTTPDataResponse: Sendable {
 	///
 	/// For endpoints that return no success body. When there is a result to decode,
 	/// use `success(decodeResult:orError:)` with `get(mapError:)`.
-	public func expectSuccess<E: Decodable>(
-		orError errorType: E.Type,
-		mapError: (E, HTTPResponse.Status) -> any Error
+	public func expectSuccess<Failure: Decodable>(
+		orError errorType: Failure.Type,
+		mapError: (Failure, HTTPResponse.Status) -> any Error
 	) throws {
 		guard response.status.kind != .successful else { return }
 		throw mapError(try decodedError(errorType), response.status)
@@ -92,7 +108,7 @@ public struct HTTPDataResponse: Sendable {
 
 extension HTTPDataResponse.ErrorResult {
 	/// Returns the decoded result, or throws the error produced by `mapError`.
-	public func get(mapError: (E, HTTPResponse.Status) -> any Error) throws -> R {
+	public func get(mapError: (Failure, HTTPResponse.Status) -> any Error) throws -> Success {
 		switch self {
 		case .result(let result):
 			return result
@@ -117,13 +133,13 @@ extension HTTPDataResponse: CustomStringConvertible {
 
 extension Data {
 	//If the return type is Data we don't try to decode it
-	public func decode<R: Decodable>() throws -> R {
-		if R.self == Data?.self || R.self == Data.self,
-			let rawData = self as? R
+	public func decode<Value: Decodable>() throws -> Value {
+		if Value.self == Data?.self || Value.self == Data.self,
+			let rawData = self as? Value
 		{
 			rawData
 		} else {
-			try JSONDecoder().decode(R.self, from: self)
+			try JSONDecoder().decode(Value.self, from: self)
 		}
 	}
 }
@@ -136,12 +152,15 @@ public enum HTTPResponseError: Error, Equatable {
 	case unsuccessfulString(Int, String)
 
 	//the status the response actually carried, which for expect(statusCode:) and
-	//success(code:) may itself be a 2xx that simply was not the one required
-	public var code: Int {
+	//success(statusCode:) may itself be a 2xx that simply was not the one required
+	public var statusCode: Int {
 		switch self {
 		case .unsuccessful(let code, _), .unsuccessfulString(let code, _): code
 		}
 	}
+
+	@available(*, deprecated, renamed: "statusCode")
+	public var code: Int { statusCode }
 
 	public var bodyString: String? {
 		switch self {

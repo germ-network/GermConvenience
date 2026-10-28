@@ -10,13 +10,13 @@ shared helper implementations:
 	* functional affordances for checking the success codes and decoding result and error types
 	* HTTPFetcher, an abstraction of `URLSession.data(for)` to allow mocking of requests for test
 * typed HTTP Method and URL shemes
-* tryUnwrap
+* typed Optional unwrapping (`unwrapped`, `unwrap(or:)`)
 * String -> utf8 Data
 * copy bytes from Contiguous bytes (primarily used to get random bytes for use as an identifier or mock data)
 
 Additional, separately-imported products, each isolating its own extra dependency so the base target stays dependency-free:
 * `GermConvenienceURLSession` (swift-http-types' `HTTPTypesFoundation`): the `URLSession` conformers to `HTTPFetcher`/`HTTPStreamFetcher`, `URLSession.manualRedirect()`, `firstLine(request:)` and `URLSessionWebSocketConnecting`. `GermConvenienceHTTP` itself never references `URLSession` or imports FoundationNetworking, so a platform that supplies its own transport depends only on that and never links FoundationNetworking
-* `GermConvenienceUtilities` (no extra dependency): `expectOne`/`expectOneOrLess` collection helpers, a short `Data` debug-preview string, and `DeleteFuse`, a guard that fails further work once a delete has begun
+* `GermConvenienceUtilities` (no extra dependency): `singleElement()`/`singleElementIfAny()` collection helpers, a short `Data` debug-preview string, and `DeleteFuse`, a guard that fails further work once a delete has begun
 * `GermConvenienceCrypto` (swift-crypto): byte/`Data` accessors on `Digest`
 * `GermConvenienceLogging` (swift-log): `Logger.logError`, which carries the error structurally rather than flattening it into the message
 

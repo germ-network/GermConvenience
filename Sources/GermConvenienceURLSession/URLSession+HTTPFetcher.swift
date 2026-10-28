@@ -157,7 +157,7 @@ final class ManualRedirect: NSObject, URLSessionTaskDelegate {
 	extension URLSession {
 		public func firstLine(request: HTTPRequest) async throws -> String? {
 			let stream = StreamingDelegate.streamBytes(
-				from: try URLRequest(httpRequest: request).tryUnwrap
+				from: try URLRequest(httpRequest: request).unwrapped
 			)
 			let firstLine = try await stream.first(where: { _ in true })
 			guard let firstLine else {

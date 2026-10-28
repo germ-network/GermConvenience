@@ -52,7 +52,7 @@ struct TestFormParameters {
 	{
 		let params = FormParameters(params)
 
-		#expect(params.asQueryItems().tempSort == expected.tempSort)
+		#expect(params.queryItems.tempSort == expected.tempSort)
 	}
 
 	//this isn't going to reliably encode to the same order as the test

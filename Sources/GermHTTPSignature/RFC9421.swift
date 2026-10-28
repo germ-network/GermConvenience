@@ -20,7 +20,10 @@ public enum RFC9421 {
 		/// The exact bytes that were signed, exposed for byte-identity
 		/// testing against the reference. Not needed to send the request —
 		/// the headers already carry everything.
-		public let base: String
+		public let signatureBase: String
+
+		@available(*, deprecated, renamed: "signatureBase")
+		public var base: String { signatureBase }
 	}
 
 	/// Builds and signs one request under this profile.
@@ -81,7 +84,7 @@ public enum RFC9421 {
 		let signature = try await sign(Data(base.utf8))
 		headers["signature"] = "\(label)=:\(signature.base64EncodedString()):"
 
-		return SignedRequest(headers: headers, base: base)
+		return SignedRequest(headers: headers, signatureBase: base)
 	}
 
 	/// RFC 9421 §2.5. One line per covered component, then

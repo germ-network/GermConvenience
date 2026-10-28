@@ -29,7 +29,7 @@ import Testing
 		#expect(
 			signed.headers["signature-input"]
 				== RFC9421ReferenceVectors.NoBody.signatureInput)
-		#expect(signed.base == RFC9421ReferenceVectors.NoBody.base)
+		#expect(signed.signatureBase == RFC9421ReferenceVectors.NoBody.base)
 		#expect(signed.headers["content-digest"] == nil)
 	}
 
@@ -53,7 +53,7 @@ import Testing
 		#expect(
 			signed.headers["signature-input"]
 				== RFC9421ReferenceVectors.WithBody.signatureInput)
-		#expect(signed.base == RFC9421ReferenceVectors.WithBody.base)
+		#expect(signed.signatureBase == RFC9421ReferenceVectors.WithBody.base)
 	}
 
 	@Test func deleteRequestMatchesTheReferenceExactly() async throws {
@@ -72,7 +72,7 @@ import Testing
 		#expect(
 			signed.headers["signature-input"]
 				== RFC9421ReferenceVectors.Delete.signatureInput)
-		#expect(signed.base == RFC9421ReferenceVectors.Delete.base)
+		#expect(signed.signatureBase == RFC9421ReferenceVectors.Delete.base)
 	}
 
 	/// A zero-length body must be treated as no body — the reference checks
@@ -96,7 +96,7 @@ import Testing
 		#expect(
 			signed.headers["signature-input"]
 				== RFC9421ReferenceVectors.NoBody.signatureInput)
-		#expect(signed.base == RFC9421ReferenceVectors.NoBody.base)
+		#expect(signed.signatureBase == RFC9421ReferenceVectors.NoBody.base)
 	}
 
 	/// The strongest available check: sign with the real signer, then verify
@@ -125,8 +125,8 @@ import Testing
 
 		let key = try Curve25519.Signing.PublicKey(
 			rawRepresentation: RFC9421ReferenceVectors.publicKey)
-		#expect(key.isValidSignature(signature, for: Data(signed.base.utf8)))
-		#expect(signed.base == RFC9421ReferenceVectors.NoBody.base)
+		#expect(key.isValidSignature(signature, for: Data(signed.signatureBase.utf8)))
+		#expect(signed.signatureBase == RFC9421ReferenceVectors.NoBody.base)
 	}
 
 	@Test func authorityOmitsTheSchemeDefaultPortButKeepsAnExplicitOne() {
@@ -189,7 +189,7 @@ import Testing
 			body: nil,
 			sign: signer.sign
 		)
-		#expect(signed.base.contains("\"@path\": /pmr/v1/blocks/did%3Aplc%3Aabc"))
+		#expect(signed.signatureBase.contains("\"@path\": /pmr/v1/blocks/did%3Aplc%3Aabc"))
 	}
 
 	/// The verifier refuses a request with a query string that doesn't cover
@@ -209,7 +209,7 @@ import Testing
 		#expect(
 			signed.headers["signature-input"]
 				== RFC9421ReferenceVectors.WithQuery.signatureInput)
-		#expect(signed.base == RFC9421ReferenceVectors.WithQuery.base)
+		#expect(signed.signatureBase == RFC9421ReferenceVectors.WithQuery.base)
 	}
 
 	/// The other half of the same boundary: a URL with no query string must not
@@ -228,6 +228,6 @@ import Testing
 		#expect(
 			signed.headers["signature-input"]
 				== RFC9421ReferenceVectors.MessagesFirstPage.signatureInput)
-		#expect(signed.base == RFC9421ReferenceVectors.MessagesFirstPage.base)
+		#expect(signed.signatureBase == RFC9421ReferenceVectors.MessagesFirstPage.base)
 	}
 }

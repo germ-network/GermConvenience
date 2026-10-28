@@ -111,7 +111,7 @@ import Testing
 	}
 }
 
-@Suite("HTTPDataResponse.success(code:)") struct TestHTTPDataResponseSuccessCode {
+@Suite("HTTPDataResponse.success(statusCode:)") struct TestHTTPDataResponseSuccessCode {
 	typealias TokenResult = TestHTTPDataResponse.TokenResult
 	typealias ErrorBody = TestHTTPDataResponse.ErrorBody
 
@@ -121,7 +121,7 @@ import Testing
 			try TestHTTPDataResponse
 			.response(.created, TestHTTPDataResponse.resultShapedBody)
 			.success(
-				code: 201,
+				statusCode: 201,
 				decodeResult: TokenResult.self,
 				orError: ErrorBody.self
 			)
@@ -141,7 +141,7 @@ import Testing
 			try TestHTTPDataResponse
 			.response(.ok, TestHTTPDataResponse.errorShapedBody)
 			.success(
-				code: 201,
+				statusCode: 201,
 				decodeResult: TokenResult.self,
 				orError: ErrorBody.self
 			)
@@ -160,7 +160,7 @@ import Testing
 			try TestHTTPDataResponse
 				.response(.created, TestHTTPDataResponse.errorShapedBody)
 				.success(
-					code: 201,
+					statusCode: 201,
 					decodeResult: TokenResult.self,
 					orError: ErrorBody.self
 				)
@@ -173,7 +173,7 @@ import Testing
 			try TestHTTPDataResponse
 			.response(.badRequest, TestHTTPDataResponse.errorShapedBody)
 			.success(
-				code: 201,
+				statusCode: 201,
 				decodeResult: TokenResult.self,
 				orError: ErrorBody.self
 			)
@@ -195,14 +195,14 @@ import Testing
 				try TestHTTPDataResponse
 					.response(.ok, TestHTTPDataResponse.resultShapedBody)
 					.success(
-						code: 201,
+						statusCode: 201,
 						decodeResult: TokenResult.self,
 						orError: ErrorBody.self
 					)
 			}
 		)
 
-		#expect(thrown.code == 200)
+		#expect(thrown.statusCode == 200)
 	}
 }
 
@@ -355,10 +355,10 @@ import Testing
 }
 
 @Suite("HTTPResponseError") struct TestHTTPResponseError {
-	@Test("code reads from either case")
+	@Test("statusCode reads from either case")
 	func codeReadsFromEitherCase() {
-		#expect(HTTPResponseError.unsuccessful(404, Data()).code == 404)
-		#expect(HTTPResponseError.unsuccessfulString(500, "boom").code == 500)
+		#expect(HTTPResponseError.unsuccessful(404, Data()).statusCode == 404)
+		#expect(HTTPResponseError.unsuccessfulString(500, "boom").statusCode == 500)
 	}
 
 	@Test("bodyString reads from either case")

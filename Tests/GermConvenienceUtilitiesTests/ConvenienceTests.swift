@@ -3,40 +3,40 @@ import GermConvenienceUtilities
 import Testing
 
 @Suite struct ConvenienceTests {
-	@Test func expectOneOnEmptyThrows() throws {
+	@Test func singleElementOnEmptyThrows() throws {
 		let empty: [Int] = []
 		let error = #expect(throws: (any Error).self) {
-			try empty.expectOne()
+			try empty.singleElement()
 		}
 		#expect(
 			(error as? LocalizedError)?.errorDescription
 				== "Expected to find one Int, but didn't.")
 	}
 
-	@Test func expectOneOnManyThrows() throws {
+	@Test func singleElementOnManyThrows() throws {
 		let error = #expect(throws: (any Error).self) {
-			try [1, 2].expectOne()
+			try [1, 2].singleElement()
 		}
 		#expect(
 			(error as? LocalizedError)?.errorDescription == "Found more than one Int.")
 	}
 
-	@Test func expectOneOnSingleReturnsElement() throws {
-		#expect(try [7].expectOne() == 7)
+	@Test func singleElementOnSingleReturnsElement() throws {
+		#expect(try [7].singleElement() == 7)
 	}
 
-	@Test func expectOneOrLessOnEmptyReturnsNil() throws {
+	@Test func singleElementIfAnyOnEmptyReturnsNil() throws {
 		let empty: [Int] = []
-		#expect(try empty.expectOneOrLess() == nil)
+		#expect(try empty.singleElementIfAny() == nil)
 	}
 
-	@Test func expectOneOrLessOnSingleReturnsElement() throws {
-		#expect(try [7].expectOneOrLess() == 7)
+	@Test func singleElementIfAnyOnSingleReturnsElement() throws {
+		#expect(try [7].singleElementIfAny() == 7)
 	}
 
-	@Test func expectOneOrLessOnManyThrows() throws {
+	@Test func singleElementIfAnyOnManyThrows() throws {
 		let error = #expect(throws: (any Error).self) {
-			try [1, 2].expectOneOrLess()
+			try [1, 2].singleElementIfAny()
 		}
 		#expect(
 			(error as? LocalizedError)?.errorDescription == "Found more than one Int.")

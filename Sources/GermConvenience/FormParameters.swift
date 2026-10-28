@@ -10,7 +10,7 @@ import Foundation
 public struct FormParameters: Sendable {
 	var storage: [String: [String]]
 
-	public static var contentType: HTTPContentType { .formUrlEncoded }
+	public static var contentType: HTTPContentType { .formURLEncoded }
 
 	public init() {
 		self.storage = [:]
@@ -69,7 +69,7 @@ public struct FormParameters: Sendable {
 		})
 	}
 
-	public func asQueryItems() -> [URLQueryItem] {
+	public var queryItems: [URLQueryItem] {
 		storage.flatMap({ parameter -> [URLQueryItem] in
 			parameter.value.map({ value -> URLQueryItem in
 				.init(name: parameter.key, value: value)
@@ -77,7 +77,13 @@ public struct FormParameters: Sendable {
 		})
 	}
 
-	public var data: Data {
+	@available(*, deprecated, renamed: "queryItems")
+	public func asQueryItems() -> [URLQueryItem] {
+		queryItems
+	}
+
+	/// The form parameters encoded as UTF-8 form data.
+	public var encodedData: Data {
 		storage.flatMap { parameter -> [String] in
 			let encodedKey = encodeString(input: parameter.key)
 
@@ -88,6 +94,9 @@ public struct FormParameters: Sendable {
 			}
 		}.joined(separator: "&").utf8Data
 	}
+
+	@available(*, deprecated, renamed: "encodedData")
+	public var data: Data { encodedData }
 
 	private func encodeString(input: String) -> String {
 		//for compatibility, not behaving strictly following
