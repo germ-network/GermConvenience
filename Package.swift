@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(
 	name: "GermConvenience",
-	platforms: [.iOS(.v15), .macOS(.v12)],
+	platforms: [.iOS(.v18), .macOS(.v15)],
 	products: [
 		// Products define the executables and libraries a package produces, making them visible to other packages.
 		.library(
@@ -140,12 +140,16 @@ let package = Package(
 			dependencies: [
 				"GermConvenience", "GermConvenienceMocks", "GermConvenienceHTTP",
 				.product(name: "HTTPTypes", package: "swift-http-types"),
-			]
+			],
+			// web-platform-tests URL vectors, used for URLAuthority tests
+			exclude: ["Resources/WPT-LICENSE.md"],
+			resources: [.copy("Resources/urltestdata.json")]
 		),
 		.testTarget(
 			name: "GermConvenienceURLSessionTests",
 			dependencies: [
-				"GermConvenience", "GermConvenienceHTTP", "GermConvenienceURLSession",
+				"GermConvenience", "GermConvenienceHTTP",
+				"GermConvenienceURLSession",
 				.product(name: "Crypto", package: "swift-crypto"),
 				.product(name: "HTTPTypes", package: "swift-http-types"),
 			]
