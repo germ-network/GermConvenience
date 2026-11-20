@@ -80,9 +80,16 @@ public struct URLAuthority: Hashable, Sendable, CustomStringConvertible {
 	/// A lowercased, unbracketed host: a domain in punycode, or an IPv4 address
 	/// in any WHATWG form, serialized as a dotted quad.
 	private static func canonicalDomain(_ host: String) throws(Errors) -> String {
-		// `URLComponents` builds no string when the decoded host holds characters
-		// a hostname can't: `ex%20ample.com` decodes to `ex ample.com`, and
-		// `ex%3Aample.com` to `ex:ample.com`, which would read back as a port.
+		// The decoded host may hold characters a hostname can't: `ex%20ample.com`
+		// decodes to `ex ample.com`, and `ex%3Aample.com` to `ex:ample.com`, which
+		// would read back as a port. Checked here rather than left to
+		// `URLComponents`, which percent-encodes a NUL on Linux instead of
+		// rejecting it as it does on Apple platforms.
+		guard !host.unicodeScalars.contains(where: isForbiddenDomainCodePoint) else {
+			throw Errors.invalidHost(host)
+		}
+		// `URLComponents` builds no string for other hosts it can't represent,
+		// such as one holding a zero-width space (U+200B).
 		var components = URLComponents()
 		components.host = host
 		// `encodedHost` keeps internationalized hosts in punycode, where
@@ -93,6 +100,13 @@ public struct URLAuthority: Hashable, Sendable, CustomStringConvertible {
 		// Hosts like `0x7f.1` reach the same server as `127.0.0.1`, so they
 		// must produce the same authority.
 		return endsInANumber(encodedHost) ? try canonicalIPv4(encodedHost) : encodedHost
+	}
+
+	/// WHATWG URL "forbidden domain code point": C0 controls, DEL, space, and
+	/// `#%/:<>?@[\]^|`.
+	private static func isForbiddenDomainCodePoint(_ scalar: Unicode.Scalar) -> Bool {
+		scalar.value <= 0x20 || scalar.value == 0x7F
+			|| "#%/:<>?@[\\]^|".unicodeScalars.contains(scalar)
 	}
 
 	/// A host's dot-separated labels, ignoring a single trailing dot.

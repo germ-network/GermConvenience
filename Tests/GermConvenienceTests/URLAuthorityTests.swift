@@ -86,9 +86,10 @@ struct TestURLAuthority {
 			("http://ex%20ample.com/", "ex ample.com"),
 			("http://ex%2Fample.com/", "ex/ample.com"),
 			("http://ex%40ample.com/", "ex@ample.com"),
-			("http://ex%00ample.com/", "ex\0ample.com"),
 			("http://ex%5Bample.com/", "ex[ample.com"),
 			("http://ex%3Aample.com/", "ex:ample.com"),
+			("http://ex%25ample.com/", "ex%ample.com"),
+			("http://ex%09ample.com/", "ex\tample.com"),
 			("http://%E2%80%8B.com/", "\u{200B}.com"),
 		])
 	func testInvalidHost(input: String, decodedHost: String) throws {
@@ -96,6 +97,16 @@ struct TestURLAuthority {
 		#expect(throws: URLAuthority.Errors.invalidHost(decodedHost)) {
 			try URLAuthority(of: url)
 		}
+	}
+
+	// Linux's `URL.host` leaves `%00` encoded where Apple platforms decode it to
+	// NUL, so the host carried by the error differs; only its case is checked.
+	@Test("Hosts containing NUL are rejected")
+	func testNULHost() throws {
+		let url = try #require(URL(string: "http://ex%00ample.com/"))
+		let error = #expect(throws: URLAuthority.Errors.self) { try URLAuthority(of: url) }
+		if case .invalidHost? = error { return }
+		Issue.record("Expected .invalidHost, got \(String(describing: error))")
 	}
 
 	@Test("Internationalized hosts are converted to punycode")
