@@ -140,7 +140,10 @@ let package = Package(
 			dependencies: [
 				"GermConvenience", "GermConvenienceMocks", "GermConvenienceHTTP",
 				.product(name: "HTTPTypes", package: "swift-http-types"),
-			]
+			],
+			// web-platform-tests URL vectors, used for URLAuthority tests
+			exclude: ["Resources/WPT-LICENSE.md"],
+			resources: [.copy("Resources/urltestdata.json")]
 		),
 		.testTarget(
 			name: "GermConvenienceURLSessionTests",
