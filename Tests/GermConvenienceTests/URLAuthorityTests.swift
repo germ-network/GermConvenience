@@ -109,6 +109,14 @@ struct TestURLAuthority {
 		Issue.record("Expected .invalidHost, got \(String(describing: error))")
 	}
 
+	@Test("Error descriptions escape the host")
+	func testErrorDescriptionEscapesHost() {
+		let error = URLAuthority.Errors.invalidHost("ex\0ample\n.com")
+		#expect(
+			error.errorDescription
+				== #"URL host is not a valid hostname: "ex\0ample\n.com""#)
+	}
+
 	@Test("Internationalized hosts are converted to punycode")
 	func testInternationalizedHost() throws {
 		let authority = try URLAuthority(of: #require(URL(string: "http://bücher.de/")))

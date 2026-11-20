@@ -23,14 +23,17 @@ public struct URLAuthority: Hashable, Sendable, CustomStringConvertible {
 		case invalidIPv6Host(String)
 		case invalidPort(Int)
 
+		/// Hosts are quoted and escaped, since an invalid one may hold control
+		/// characters (a NUL, a newline) that would otherwise reach logs raw.
 		public var errorDescription: String? {
 			switch self {
 			case .missingHost: "URL is missing a host"
-			case .invalidHost(let host): "URL host is not a valid hostname: \(host)"
+			case .invalidHost(let host):
+				"URL host is not a valid hostname: \(host.debugDescription)"
 			case .invalidIPv4Host(let host):
-				"URL host is not a valid IPv4 address: \(host)"
+				"URL host is not a valid IPv4 address: \(host.debugDescription)"
 			case .invalidIPv6Host(let host):
-				"URL host is not a valid IPv6 address: \(host)"
+				"URL host is not a valid IPv6 address: \(host.debugDescription)"
 			case .invalidPort(let port): "URL port is out of range: \(port)"
 			}
 		}
