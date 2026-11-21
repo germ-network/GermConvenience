@@ -298,6 +298,78 @@ import Testing
 		#expect(try await mock.data(for: get).data == "any".utf8Data)
 	}
 
+	@Test func initAlwaysStubAnswersRepeatedly() async throws {
+		let mock = MockHTTPFetcher([
+			.on(tokenUrl).always(.success(tokenResponse))
+		])
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		for _ in 0..<3 {
+			#expect(try await mock.data(for: request).data == tokenResponse.data)
+		}
+		#expect(await mock.allRequested)
+	}
+
+	@Test func initEnqueueStubsAreConsumedInOrder() async throws {
+		let mock = MockHTTPFetcher([
+			.on(tokenUrl).enqueue(.success(.ok("first"))),
+			.on(tokenUrl).enqueue(.success(.ok("second"))),
+		])
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		#expect(try await mock.data(for: request).data == "first".utf8Data)
+		#expect(try await mock.data(for: request).data == "second".utf8Data)
+		#expect(await mock.allRequested)
+		await #expect(throws: MockHTTPFetcher.Errors.tooManyRequests) {
+			try await mock.data(for: request)
+		}
+	}
+
+	@Test func initEnqueueStubComesBeforeInitAlwaysStub() async throws {
+		let mock = MockHTTPFetcher([
+			.on(tokenUrl).enqueue(.success(.ok("first"))),
+			.on(tokenUrl).always(.success(.ok("steady"))),
+		])
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		#expect(try await mock.data(for: request).data == "first".utf8Data)
+		#expect(try await mock.data(for: request).data == "steady".utf8Data)
+		#expect(try await mock.data(for: request).data == "steady".utf8Data)
+	}
+
+	@Test func liveAlwaysReplacesInitAlwaysStub() async throws {
+		let mock = MockHTTPFetcher([
+			.on(tokenUrl).always(.success(.ok("init")))
+		])
+		await mock.on(tokenUrl).always(.success(.ok("live")))
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		#expect(try await mock.data(for: request).data == "live".utf8Data)
+	}
+
+	@Test func liveEnqueueQueuesBehindInitStubs() async throws {
+		let mock = MockHTTPFetcher([
+			.on(tokenUrl).enqueue(.success(.ok("init")))
+		])
+		await mock.on(tokenUrl).enqueue(.success(.ok("live")))
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		#expect(try await mock.data(for: request).data == "init".utf8Data)
+		#expect(try await mock.data(for: request).data == "live".utf8Data)
+	}
+
+	// the init applies the same normalisation as on(…), which rewrites a bare
+	// origin's empty path to "/"
+	@Test func initStubOnABareOriginMatches() async throws {
+		let origin = URL(string: "https://as.example")!
+		let mock = MockHTTPFetcher([
+			.on(origin, method: .get).always(.success(tokenResponse))
+		])
+
+		let request = try BundledHTTPRequest(method: .get, url: origin)
+		#expect(try await mock.data(for: request).data == tokenResponse.data)
+	}
+
 	@Test func alwaysErrorPropagatesEveryTime() async throws {
 		let error = HTTPResponseError.unsuccessful(503, Data())
 		let mock = await MockHTTPFetcher()

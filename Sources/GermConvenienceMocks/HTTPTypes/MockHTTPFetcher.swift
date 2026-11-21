@@ -41,7 +41,7 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 		let method: MethodMatcher
 	}
 
-	/// The target of a registration, produced by `on(_:method:)`.
+	/// A registration in progress on a live fetcher, produced by `on(_:method:)`.
 	///
 	/// Carrying the url and method in the value rather than on the fetcher keeps
 	/// `on(…).enqueue(…)` and `on(…).always(…)` atomic: two chains configuring
@@ -52,14 +52,13 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 	///   defined order relative to each other.
 	public struct Registration: Sendable {
 		fileprivate let fetcher: MockHTTPFetcher
-		fileprivate let url: URL
-		fileprivate let method: MethodMatcher
+		fileprivate let stub: Stub.Registration
 
 		@discardableResult
 		public func enqueue(
 			_ response: Result<HTTPDataResponse, Error>
 		) async -> MockHTTPFetcher {
-			await fetcher.append(url: url, method: method, response)
+			await fetcher.apply(stub.enqueue(response))
 			return fetcher
 		}
 
@@ -73,12 +72,59 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 		public func always(
 			_ response: Result<HTTPDataResponse, Error>
 		) async -> MockHTTPFetcher {
-			await fetcher.setFallback(url: url, method: method, response)
+			await fetcher.apply(stub.always(response))
 			return fetcher
 		}
 	}
 
-	public init() {}
+	/// A registration made before the fetcher exists, for `init(_:)`. Built the
+	/// same way as a live one: `.on(url, method:).enqueue(…)` or `.always(…)`.
+	public struct Stub: Sendable {
+		fileprivate enum Kind: Sendable {
+			case enqueue(Result<HTTPDataResponse, Error>)
+			case always(Result<HTTPDataResponse, Error>)
+		}
+
+		fileprivate let url: URL
+		fileprivate let method: MethodMatcher
+		fileprivate let kind: Kind
+
+		// a static on `Stub` rather than `MockHTTPFetcher`, so the `.on(…)`
+		// shorthand resolves inside a `[Stub]` literal and doesn't clash with
+		// the instance `on(_:method:)`
+		public static func on(_ url: URL, method: MethodMatcher = .any) -> Registration {
+			Registration(url: url, method: method)
+		}
+
+		/// A stub in progress, produced by `Stub.on(_:method:)`; the counterpart
+		/// of `MockHTTPFetcher.Registration` for `init(_:)`, which wraps one.
+		public struct Registration: Sendable {
+			fileprivate let url: URL
+			fileprivate let method: MethodMatcher
+
+			public func enqueue(_ response: Result<HTTPDataResponse, Error>) -> Stub {
+				Stub(url: url, method: method, kind: .enqueue(response))
+			}
+
+			/// See `MockHTTPFetcher.Registration.always(_:)`.
+			public func always(_ response: Result<HTTPDataResponse, Error>) -> Stub {
+				Stub(url: url, method: method, kind: .always(response))
+			}
+		}
+	}
+
+	/// Starts with `stubs` registered, in order, as if each were made with
+	/// `on(…).enqueue(…)` or `on(…).always(…)`, so later registrations queue
+	/// after them, and a later `always` replaces one given here.
+	public init(_ stubs: [Stub] = []) {
+		// built locally and assigned once, so the synchronous init never mutates
+		// actor state after initialisation
+		var handlers: [RequestKey: Responses] = [:]
+		for stub in stubs {
+			Self.register(stub, in: &handlers)
+		}
+		self.handlers = handlers
+	}
 
 	/// What is registered for one url and method.
 	private struct Responses {
@@ -102,11 +148,11 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 		}
 	}
 
-	private var handlers: [RequestKey: Responses] = [:]
+	private var handlers: [RequestKey: Responses]
 	private var requestLog: [URL: [BundledHTTPRequest]] = [:]
 
 	public nonisolated func on(_ url: URL, method: MethodMatcher = .any) -> Registration {
-		Registration(fetcher: self, url: url, method: method)
+		Registration(fetcher: self, stub: Stub.on(url, method: method))
 	}
 
 	//lookup keys off request.request.url, which HTTPRequest has round-tripped
@@ -117,22 +163,20 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 		return HTTPRequest(method: .get, url: url).url ?? url
 	}
 
-	fileprivate func append(
-		url: URL,
-		method: MethodMatcher,
-		_ response: Result<HTTPDataResponse, Error>
-	) {
-		let key = RequestKey(url: Self.normalized(url), method: method)
-		handlers[key, default: Responses()].queued.append(response)
+	/// Applies one stub to `handlers`; shared by `init(_:)` and the live `on(…)`
+	/// API, so both normalise and order registrations the same way.
+	private static func register(_ stub: Stub, in handlers: inout [RequestKey: Responses]) {
+		let key = RequestKey(url: normalized(stub.url), method: stub.method)
+		switch stub.kind {
+		case .enqueue(let response):
+			handlers[key, default: Responses()].queued.append(response)
+		case .always(let response):
+			handlers[key, default: Responses()].fallback = response
+		}
 	}
 
-	fileprivate func setFallback(
-		url: URL,
-		method: MethodMatcher,
-		_ response: Result<HTTPDataResponse, Error>
-	) {
-		let key = RequestKey(url: Self.normalized(url), method: method)
-		handlers[key, default: Responses()].fallback = response
+	fileprivate func apply(_ stub: Stub) {
+		Self.register(stub, in: &handlers)
 	}
 
 	public func data(for request: BundledHTTPRequest) throws -> HTTPDataResponse {
