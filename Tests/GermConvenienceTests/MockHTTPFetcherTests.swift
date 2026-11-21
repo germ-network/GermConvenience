@@ -241,4 +241,74 @@ import Testing
 		}
 		#expect(await mock.allRequested)
 	}
+
+	@Test func alwaysAnswersEveryRequest() async throws {
+		let mock = await MockHTTPFetcher()
+			.on(tokenUrl)
+			.always(.success(tokenResponse))
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		for _ in 0..<3 {
+			#expect(try await mock.data(for: request).data == tokenResponse.data)
+		}
+
+		#expect(await mock.requests(for: tokenUrl).count == 3)
+		// a fallback is never used up, so there is nothing left unrequested
+		#expect(await mock.allRequested)
+	}
+
+	@Test func queuedResponsesComeBeforeAlways() async throws {
+		let mock = await MockHTTPFetcher()
+			.on(tokenUrl)
+			.enqueue(.success(.ok("first")))
+			.on(tokenUrl)
+			.always(.success(.ok("steady")))
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		#expect(try await mock.data(for: request).data == "first".utf8Data)
+		#expect(try await mock.data(for: request).data == "steady".utf8Data)
+		#expect(try await mock.data(for: request).data == "steady".utf8Data)
+	}
+
+	// the most specific registration wins: an exact-method fallback answers
+	// before anything registered for .any, even a queued response
+	@Test func exactAlwaysComesBeforeAnyQueue() async throws {
+		let mock = await MockHTTPFetcher()
+			.on(tokenUrl, method: .any)
+			.enqueue(.success(.ok("queued")))
+			.on(tokenUrl, method: .post)
+			.always(.success(.ok("steady")))
+
+		let post = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		let get = try BundledHTTPRequest(method: .get, url: tokenUrl)
+		#expect(try await mock.data(for: post).data == "steady".utf8Data)
+		#expect(try await mock.data(for: post).data == "steady".utf8Data)
+		#expect(try await mock.data(for: get).data == "queued".utf8Data)
+	}
+
+	@Test func exactAlwaysComesBeforeAnyAlways() async throws {
+		let mock = await MockHTTPFetcher()
+			.on(tokenUrl, method: .any)
+			.always(.success(.ok("any")))
+		await mock.on(tokenUrl, method: .post).always(.success(.ok("post")))
+
+		let post = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		let get = try BundledHTTPRequest(method: .get, url: tokenUrl)
+		#expect(try await mock.data(for: post).data == "post".utf8Data)
+		#expect(try await mock.data(for: get).data == "any".utf8Data)
+	}
+
+	@Test func alwaysErrorPropagatesEveryTime() async throws {
+		let error = HTTPResponseError.unsuccessful(503, Data())
+		let mock = await MockHTTPFetcher()
+			.on(tokenUrl)
+			.always(.failure(error))
+
+		let request = try BundledHTTPRequest(method: .post, url: tokenUrl, body: Data())
+		for _ in 0..<2 {
+			await #expect(throws: error) {
+				try await mock.data(for: request)
+			}
+		}
+	}
 }

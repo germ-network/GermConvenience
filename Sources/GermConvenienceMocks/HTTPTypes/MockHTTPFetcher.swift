@@ -44,8 +44,9 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 	/// The target of a registration, produced by `on(_:method:)`.
 	///
 	/// Carrying the url and method in the value rather than on the fetcher keeps
-	/// `on(…).enqueue(…)` atomic: two chains configuring the same fetcher
-	/// concurrently cannot enqueue a response against each other's url.
+	/// `on(…).enqueue(…)` and `on(…).always(…)` atomic: two chains configuring
+	/// the same fetcher concurrently cannot register a response against each
+	/// other's url.
 	///
 	/// - Note: responses enqueued concurrently against the *same* url have no
 	///   defined order relative to each other.
@@ -61,12 +62,47 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 			await fetcher.append(url: url, method: method, response)
 			return fetcher
 		}
+
+		/// Answers every request with `response` once responses enqueued for the
+		/// same url and method are used up, so a test can script the first few
+		/// responses and then a steady state. An exact-method `always` answers
+		/// before any `.any` registration for the url, queued or not. Replaces an
+		/// earlier `always` for this url and method. Never used up, so
+		/// `allRequested` ignores it.
+		@discardableResult
+		public func always(
+			_ response: Result<HTTPDataResponse, Error>
+		) async -> MockHTTPFetcher {
+			await fetcher.setFallback(url: url, method: method, response)
+			return fetcher
+		}
 	}
 
 	public init() {}
 
-	private var handlers: [RequestKey: [Result<HTTPDataResponse, Error>]] = [:]
-	private var requests: [RequestKey: [BundledHTTPRequest]] = [:]
+	/// What is registered for one url and method.
+	private struct Responses {
+		/// Consumed in order: the nth request takes `queued[n]`.
+		var queued: [Result<HTTPDataResponse, Error>] = []
+		/// How many of `queued` have been taken.
+		var consumed = 0
+		/// Answers every request once `queued` is used up; never used up itself.
+		var fallback: Result<HTTPDataResponse, Error>?
+
+		var remaining: Int { queued.count - consumed }
+
+		/// The next queued response, then `fallback` once `queued` is used up, or
+		/// `nil` if there is neither.
+		mutating func next() -> Result<HTTPDataResponse, Error>? {
+			guard consumed < queued.count else { return fallback }
+			// after the guard, so neither a drained queue nor the fallback
+			// advances `consumed`
+			defer { consumed += 1 }
+			return queued[consumed]
+		}
+	}
+
+	private var handlers: [RequestKey: Responses] = [:]
 	private var requestLog: [URL: [BundledHTTPRequest]] = [:]
 
 	public nonisolated func on(_ url: URL, method: MethodMatcher = .any) -> Registration {
@@ -86,12 +122,17 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 		method: MethodMatcher,
 		_ response: Result<HTTPDataResponse, Error>
 	) {
-		handlers[RequestKey(url: Self.normalized(url), method: method), default: []]
-			.append(response)
+		let key = RequestKey(url: Self.normalized(url), method: method)
+		handlers[key, default: Responses()].queued.append(response)
 	}
 
-	private func remaining(_ key: RequestKey) -> Int {
-		handlers[key, default: []].count - requests[key, default: []].count
+	fileprivate func setFallback(
+		url: URL,
+		method: MethodMatcher,
+		_ response: Result<HTTPDataResponse, Error>
+	) {
+		let key = RequestKey(url: Self.normalized(url), method: method)
+		handlers[key, default: Responses()].fallback = response
 	}
 
 	public func data(for request: BundledHTTPRequest) throws -> HTTPDataResponse {
@@ -103,25 +144,19 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 
 		let exactKey = RequestKey(url: url, method: .method(request.request.method))
 		let anyKey = RequestKey(url: url, method: .any)
-
-		let key: RequestKey
-		if remaining(exactKey) > 0 {
-			key = exactKey
-		} else if remaining(anyKey) > 0 {
-			// a drained exact queue falls back to .any, so a general handler can
-			// cover the remaining requests
-			key = anyKey
+		// the most specific registration wins: the exact method's queue, then its
+		// fallback. `??` only consults .any once that has nothing, so a general
+		// handler can cover the remaining requests
+		if let response = handlers[exactKey]?.next() ?? handlers[anyKey]?.next() {
+			return try response.get()
 		} else if handlers[exactKey] != nil || handlers[anyKey] != nil {
-			// registered, but every queued response has been consumed. Nothing is
-			// recorded against the key, so enqueuing more responses resumes here
+			// registered, but every queued response has been consumed and no fallback
+			// is registered. `consumed` is not advanced, so enqueuing more responses
+			// resumes here
 			throw Errors.tooManyRequests
 		} else {
 			throw Errors.unmockedRequest(request)
 		}
-
-		let index = requests[key, default: []].count
-		requests[key, default: []].append(request)
-		return try handlers[key, default: []][index].get()
 	}
 
 	/// Every request sent to `url`, including ones rejected as unmocked or over
@@ -167,8 +202,7 @@ public actor MockHTTPFetcher: RedirectRefusingHTTPFetcher {
 	}
 
 	public var allRequested: Bool {
-		handlers.allSatisfy { key, queue in
-			requests[key, default: []].count >= queue.count
-		}
+		// a fallback is never used up, so only queued responses count
+		handlers.values.allSatisfy { $0.remaining <= 0 }
 	}
 }
